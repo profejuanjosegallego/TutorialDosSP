@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Tutorial 2: de la entidad a la API — Validación, DTO y Servicio · Spring Boot — Juan José Gallego Mesa</title>
+<meta name="description" content="Tutorial Spring Boot por Juan José Gallego Mesa: la capa de negocio sobre la entidad Usuario. Validaciones (interfaz + @Component), DTO como POJOs sin mapper y servicios con IServicio/Impl e inyección por constructor." />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%2322d3ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='14' fill='url(%23g)'/%3E%3Cg fill='none' stroke='%23ffffff' stroke-width='3.5' stroke-linejoin='round'%3E%3Cellipse cx='32' cy='20' rx='15' ry='6'/%3E%3Cpath d='M17 20 v10 c0 3.3 6.7 6 15 6 s15-2.7 15-6 V20'/%3E%3Cpath d='M17 30 v10 c0 3.3 6.7 6 15 6 s15-2.7 15-6 V30'/%3E%3C/g%3E%3C/svg%3E" />
+
+<!-- Tipografías -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+
+<!-- Resaltado de código (Prism) -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
+<style>
+  :root {
+    --azul: #2563eb;
+    --azul-fuerte: #1d4ed8;
+    --sky: #38bdf8;
+    --cyan: #22d3ee;
+    --indigo: #6366f1;
+    --tinta: #0b1220;
+    --tinta-2: #0f1b2e;
+    --slate: #1e293b;
+    --linea: rgba(148, 163, 184, 0.18);
+    --texto: #e7eefc;
+    --suave: #9fb3d1;
+    --ok: #2dd4bf;
+    --alerta: #fb7185;
+    --aviso: #fbbf24;
+    --vidrio: rgba(255, 255, 255, 0.04);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: "Inter", system-ui, sans-serif;
+    background: var(--tinta);
+    color: var(--texto);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* Fondo animado con orbes */
+  .fondo {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(37, 99, 235, 0.25), transparent 60%),
+      radial-gradient(900px 600px at 100% 0%, rgba(34, 211, 238, 0.16), transparent 55%),
+      radial-gradient(900px 700px at 50% 120%, rgba(99, 102, 241, 0.18), transparent 55%),
+      var(--tinta);
+  }
+  .orbe {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(70px);
+    opacity: 0.5;
+    z-index: -1;
+    animation: flotar 16s ease-in-out infinite;
+  }
+  .orbe.a { width: 380px; height: 380px; background: #1d4ed8; top: 8%; left: 70%; }
+  .orbe.b { width: 320px; height: 320px; background: #22d3ee; top: 60%; left: 8%; animation-delay: -5s; }
+  .orbe.c { width: 280px; height: 280px; background: #6366f1; top: 80%; left: 75%; animation-delay: -9s; }
+  @keyframes flotar {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50% { transform: translate(-30px, 40px) scale(1.12); }
+  }
+
+  /* Barra de progreso */
+  .progreso {
+    position: fixed; top: 0; left: 0; height: 4px; width: 0%;
+    background: linear-gradient(90deg, var(--azul), var(--cyan));
+    z-index: 50; box-shadow: 0 0 14px rgba(56, 189, 248, 0.7);
+    transition: width 0.1s linear;
+  }
+
+  /* Navegación de puntos */
+  .nav-puntos {
+    position: fixed; right: 22px; top: 50%; transform: translateY(-50%);
+    display: flex; flex-direction: column; gap: 12px; z-index: 40;
+  }
+  .nav-puntos a {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: rgba(148, 163, 184, 0.35);
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    transition: all 0.25s ease; position: relative;
+  }
+  .nav-puntos a:hover { transform: scale(1.35); background: var(--sky); }
+  .nav-puntos a.activo {
+    background: var(--cyan); box-shadow: 0 0 12px var(--cyan); transform: scale(1.25);
+  }
+  .nav-puntos a span {
+    position: absolute; right: 20px; top: 50%; transform: translateY(-50%);
+    white-space: nowrap; font-size: 11px; font-weight: 600; color: var(--suave);
+    background: rgba(15, 27, 46, 0.92); padding: 3px 9px; border-radius: 7px;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s; border: 1px solid var(--linea);
+  }
+  .nav-puntos a:hover span { opacity: 1; }
+
+  @media (max-width: 820px) { .nav-puntos { display: none; } }
+
+  /* Slides */
+  .slide {
+    min-height: 100vh; width: 100%;
+    display: flex; flex-direction: column; justify-content: center;
+    padding: 84px clamp(18px, 6vw, 90px);
+    position: relative; border-bottom: 1px solid var(--linea);
+  }
+  .slide-inner { width: 100%; max-width: 1080px; margin: 0 auto; }
+
+  .kicker {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: 12.5px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--sky); padding: 6px 14px; border-radius: 999px;
+    background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.25);
+    margin-bottom: 18px;
+  }
+  .kicker svg { width: 15px; height: 15px; }
+
+  h1 { font-size: clamp(2.1rem, 6vw, 4.2rem); font-weight: 900; line-height: 1.05; letter-spacing: -0.02em; }
+  h2 { font-size: clamp(1.7rem, 4.2vw, 2.9rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; margin-bottom: 10px; }
+  h3 { font-size: 1.18rem; font-weight: 700; }
+  .grad {
+    background: linear-gradient(100deg, #60a5fa 0%, #22d3ee 50%, #818cf8 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .lead { font-size: clamp(1rem, 2.1vw, 1.25rem); color: var(--suave); max-width: 720px; margin-top: 14px; }
+  .seccion-titulo { display: flex; align-items: center; gap: 14px; margin-bottom: 8px; }
+  .seccion-titulo .ico {
+    flex: none; width: 52px; height: 52px; border-radius: 14px;
+    display: grid; place-items: center;
+    background: linear-gradient(135deg, rgba(37,99,235,0.9), rgba(34,211,238,0.85));
+    box-shadow: 0 10px 30px rgba(37, 99, 235, 0.35);
+  }
+  .seccion-titulo .ico svg { width: 28px; height: 28px; color: #fff; }
+  .sub { color: var(--suave); margin-bottom: 26px; max-width: 760px; }
+
+  /* Tarjetas / vidrio */
+  .vidrio {
+    background: var(--vidrio); border: 1px solid var(--linea);
+    border-radius: 18px; backdrop-filter: blur(10px);
+  }
+  .grid { display: grid; gap: 18px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 880px) { .g2, .g3 { grid-template-columns: 1fr; } }
+
+  .card { padding: 20px 22px; border-radius: 16px; }
+  .card h3 { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .card h3 svg { width: 20px; height: 20px; color: var(--sky); flex: none; }
+  .card p { color: var(--suave); font-size: 0.96rem; }
+  .card:hover { border-color: rgba(56, 189, 248, 0.4); transform: translateY(-4px); transition: 0.25s; }
+
+  /* Píldoras de anotaciones */
+  .pill {
+    display: inline-block; font-family: "JetBrains Mono", monospace;
+    font-size: 0.82rem; font-weight: 600; padding: 3px 10px; border-radius: 8px;
+    background: rgba(99, 102, 241, 0.16); color: #c7d2fe; border: 1px solid rgba(99,102,241,0.3);
+    margin: 3px 4px 3px 0;
+  }
+  .pill.azul { background: rgba(37,99,235,0.16); color: #bfdbfe; border-color: rgba(37,99,235,0.35); }
+  .pill.cyan { background: rgba(34,211,238,0.14); color: #a5f3fc; border-color: rgba(34,211,238,0.3); }
+  .pill.ok { background: rgba(45,212,191,0.14); color: #99f6e4; border-color: rgba(45,212,191,0.3); }
+  .pill.warn { background: rgba(251,191,36,0.14); color: #fde68a; border-color: rgba(251,191,36,0.3); }
+  .pill.rojo { background: rgba(251,113,133,0.15); color: #fecaca; border-color: rgba(251,113,133,0.4); }
+
+  /* Bloques de código */
+  .code { border-radius: 14px; overflow: hidden; border: 1px solid var(--linea); background: #11182a; box-shadow: 0 18px 50px rgba(0,0,0,0.35); }
+  .code-bar {
+    display: flex; align-items: center; gap: 10px; padding: 9px 14px;
+    background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--linea);
+  }
+  .dots { display: flex; gap: 6px; }
+  .dots i { width: 11px; height: 11px; border-radius: 50%; display: block; }
+  .dots i:nth-child(1) { background: #ff5f57; }
+  .dots i:nth-child(2) { background: #febc2e; }
+  .dots i:nth-child(3) { background: #28c840; }
+  .code-bar .lang {
+    margin-left: 6px; font-family: "JetBrains Mono", monospace; font-size: 12.5px;
+    color: var(--suave); font-weight: 600;
+  }
+  .copy {
+    margin-left: auto; display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12.5px; font-weight: 600; color: var(--suave); cursor: pointer;
+    background: rgba(148,163,184,0.1); border: 1px solid var(--linea);
+    padding: 5px 11px; border-radius: 8px; transition: 0.2s; font-family: "Inter", sans-serif;
+  }
+  .copy:hover { color: #fff; border-color: var(--sky); background: rgba(56,189,248,0.15); }
+  .copy svg { width: 14px; height: 14px; }
+  .copy.ok { color: var(--ok); border-color: var(--ok); }
+  pre { margin: 0; }
+  pre[class*="language-"] { padding: 18px 20px !important; margin: 0 !important; border-radius: 0 !important; background: transparent !important; font-size: 13.5px; max-height: 62vh; overflow: auto; }
+  code[class*="language-"] { font-family: "JetBrains Mono", monospace !important; font-size: 13.5px; }
+
+  /* Diagrama de capas */
+  .capas { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+  .capa {
+    flex: 1 1 150px; min-width: 150px; text-align: center; padding: 20px 14px; border-radius: 14px;
+    background: var(--vidrio); border: 1px solid var(--linea); position: relative;
+  }
+  .capa.foco { border-color: rgba(56,189,248,0.55); background: rgba(56,189,248,0.08); box-shadow: 0 10px 30px rgba(37,99,235,0.2); }
+  .capa .ic { width: 46px; height: 46px; border-radius: 12px; margin: 0 auto 10px; display: grid; place-items: center; background: rgba(37,99,235,0.18); }
+  .capa .ic svg { width: 24px; height: 24px; color: var(--sky); }
+  .capa h4 { font-size: 1rem; font-weight: 700; margin-bottom: 4px; }
+  .capa small { color: var(--suave); font-size: 0.82rem; display: block; }
+  .capa .tag { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; color: #c7d2fe; margin-top: 8px; display: block; }
+  .flecha-h { display: grid; place-items: center; color: var(--sky); padding: 0 4px; }
+  .flecha-h svg { width: 26px; height: 26px; animation: latir 1.8s ease-in-out infinite; }
+  @keyframes latir { 0%,100% { transform: translateX(0); opacity: 0.6; } 50% { transform: translateX(4px); opacity: 1; } }
+  @media (max-width: 880px) {
+    .capas { flex-direction: column; }
+    .flecha-h svg { transform: rotate(90deg); }
+  }
+
+  /* Cadena de capas (Tutorial 1 -> 2) */
+  .cadena { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .eslabon {
+    padding: 10px 16px; border-radius: 999px; font-weight: 700; font-size: 0.9rem;
+    border: 1px solid var(--linea); background: rgba(15,27,46,0.7);
+    display: inline-flex; align-items: center; gap: 8px;
+  }
+  .eslabon svg { width: 16px; height: 16px; }
+  .eslabon.hecho { color: var(--suave); }
+  .eslabon.hecho svg { color: var(--ok); }
+  .eslabon.nuevo { color: #a5f3fc; border-color: rgba(34,211,238,0.4); background: rgba(34,211,238,0.1); }
+  .eslabon.nuevo svg { color: var(--cyan); }
+  .cadena .sep { color: var(--sky); }
+  .cadena .sep svg { width: 18px; height: 18px; }
+
+  /* Tabla */
+  table.tabla { width: 100%; border-collapse: collapse; font-size: 0.92rem; overflow: hidden; border-radius: 14px; }
+  table.tabla th, table.tabla td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+  table.tabla th { background: rgba(255,255,255,0.04); color: var(--texto); font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  table.tabla td { color: var(--suave); }
+  table.tabla code { font-family: "JetBrains Mono", monospace; font-size: 0.85rem; color: #a5f3fc; background: rgba(34,211,238,0.08); padding: 1px 6px; border-radius: 5px; }
+  table.tabla tr:hover td { background: rgba(56,189,248,0.04); }
+
+  .callout {
+    border-radius: 14px; padding: 18px 20px; border-left: 4px solid var(--cyan);
+    background: rgba(34, 211, 238, 0.08); border-top: 1px solid var(--linea); border-right: 1px solid var(--linea); border-bottom: 1px solid var(--linea);
+  }
+  .callout.reco { border-left-color: var(--ok); background: rgba(45, 212, 191, 0.08); }
+  .callout.warn { border-left-color: var(--aviso); background: rgba(251, 191, 36, 0.08); }
+  .callout h3 { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+  .callout h3 svg { width: 20px; height: 20px; }
+  .callout.reco h3 svg { color: var(--ok); }
+  .callout.warn h3 svg { color: var(--aviso); }
+  .callout p, .callout li { color: var(--suave); font-size: 0.96rem; }
+  .callout ul { margin: 6px 0 0 18px; }
+
+  /* Tarjeta de Historia de Usuario (HU) */
+  .hu { border-radius: 16px; overflow: hidden; border: 1px solid var(--linea); }
+  .hu-cab {
+    display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+    background: linear-gradient(135deg, rgba(37,99,235,0.25), rgba(34,211,238,0.12));
+    border-bottom: 1px solid var(--linea); flex-wrap: wrap;
+  }
+  .hu-cab .codigo {
+    font-family: "JetBrains Mono", monospace; font-weight: 800; font-size: 0.86rem;
+    color: #bfdbfe; background: rgba(37,99,235,0.25); border: 1px solid rgba(37,99,235,0.4);
+    padding: 4px 10px; border-radius: 8px;
+  }
+  .hu-cab .tipo {
+    margin-left: auto; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; color: #a5f3fc; padding: 4px 10px; border-radius: 999px;
+    background: rgba(59,130,246,0.18); border: 1px solid rgba(59,130,246,0.35);
+  }
+  .hu-cab .titulo { font-weight: 700; font-size: 1rem; color: var(--texto); flex: 1 1 260px; }
+  .hu-body { padding: 16px 18px; background: rgba(15,27,46,0.5); }
+  .hu-body > .lbl { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--suave); margin-bottom: 8px; display: block; }
+  .criterios { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+  .criterios li { display: flex; align-items: flex-start; gap: 10px; color: var(--suave); font-size: 0.94rem; }
+  .criterios li svg { width: 17px; height: 17px; color: var(--ok); flex: none; margin-top: 3px; }
+  .criterios li code { font-family: "JetBrains Mono", monospace; font-size: 0.82rem; color: #a5f3fc; background: rgba(34,211,238,0.08); padding: 1px 5px; border-radius: 5px; }
+
+  /* Animación de aparición */
+  .reveal { opacity: 0; transform: translateY(34px); transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2,0.7,0.2,1); }
+  .reveal.in { opacity: 1; transform: none; }
+  .d1 { transition-delay: 0.08s; } .d2 { transition-delay: 0.16s; } .d3 { transition-delay: 0.24s; } .d4 { transition-delay: 0.32s; }
+
+  .mt { margin-top: 22px; } .mt-s { margin-top: 12px; } .mb { margin-bottom: 18px; }
+  .pista { text-align: center; color: var(--suave); font-size: 0.85rem; margin-top: 40px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .pista svg { width: 18px; height: 18px; animation: subebaja 1.6s ease-in-out infinite; }
+  @keyframes subebaja { 0%,100% { transform: translateY(0); } 50% { transform: translateY(6px); } }
+
+  .firma { color: var(--suave); font-size: 0.9rem; margin-top: 30px; display: flex; align-items: center; gap: 8px; }
+  .firma svg { width: 16px; height: 16px; color: var(--sky); }
+  .toc { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+  .toc a {
+    display: inline-flex; align-items: center; gap: 8px; padding: 9px 15px; border-radius: 999px;
+    background: var(--vidrio); border: 1px solid var(--linea); color: var(--texto);
+    text-decoration: none; font-size: 0.9rem; font-weight: 600; transition: 0.2s;
+  }
+  .toc a:hover { border-color: var(--sky); color: #fff; background: rgba(56,189,248,0.12); transform: translateY(-2px); }
+  .toc a svg { width: 16px; height: 16px; color: var(--sky); }
+  .volver { display:inline-flex; align-items:center; gap:8px; color: var(--suave); text-decoration:none; font-size:0.85rem; font-weight:600; margin-bottom: 16px; padding: 6px 12px; border:1px solid var(--linea); border-radius: 999px; transition:0.2s; }
+  .volver:hover { color:#fff; border-color: var(--sky); background: rgba(56,189,248,0.1); }
+  .volver svg { width: 15px; height: 15px; }
+
+  /* Probador del validador (demo interactivo) */
+  .probador { border-radius: 18px; overflow: hidden; }
+  .probador-head { display: flex; align-items: center; gap: 12px; padding: 12px 16px; background: rgba(255,255,255,0.03); border-bottom: 1px solid var(--linea); flex-wrap: wrap; }
+  .probador-head .ttl { font-family: "JetBrains Mono", monospace; font-size: 13px; color: var(--suave); display: flex; align-items: center; gap: 8px; }
+  .probador-head .ttl svg { width: 16px; height: 16px; color: var(--sky); }
+  .probador-body { display: grid; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 880px) { .probador-body { grid-template-columns: 1fr; } }
+  .form-val { padding: 18px; display: flex; flex-direction: column; gap: 14px; border-right: 1px solid var(--linea); }
+  .campo label { display:block; font-size: 12px; text-transform: uppercase; letter-spacing:0.05em; color: var(--suave); font-weight: 700; margin-bottom: 6px; }
+  .campo input {
+    width: 100%; padding: 10px 12px; border-radius: 10px; background: rgba(10,15,28,0.8);
+    border: 1px solid var(--linea); color: var(--texto); font-family: "JetBrains Mono", monospace; font-size: 0.9rem;
+    transition: 0.2s;
+  }
+  .campo input:focus { outline: none; border-color: var(--sky); box-shadow: 0 0 0 3px rgba(56,189,248,0.15); }
+  .presets { display:flex; flex-wrap: wrap; gap: 8px; }
+  .preset { cursor:pointer; font-size: 12px; font-weight: 600; color: var(--suave); background: rgba(148,163,184,0.1); border: 1px solid var(--linea); padding: 6px 11px; border-radius: 8px; transition:0.2s; font-family:"Inter",sans-serif; }
+  .preset:hover { color:#fff; border-color: var(--sky); background: rgba(56,189,248,0.12); }
+  .btn-val { display:inline-flex; align-items:center; justify-content:center; gap:8px; font-weight:700; font-size:0.95rem; color:#fff; cursor:pointer; border:none; padding:11px 18px; border-radius:10px; background:linear-gradient(135deg, var(--azul), var(--cyan)); box-shadow:0 8px 22px rgba(37,99,235,0.4); transition:0.2s; font-family:"Inter",sans-serif; }
+  .btn-val:hover { transform: translateY(-2px); }
+  .btn-val svg { width: 16px; height: 16px; }
+  .reglas { padding: 18px; display:flex; flex-direction: column; gap: 4px; }
+  .regla { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--linea); }
+  .regla .marca { width: 22px; height:22px; border-radius:50%; flex:none; display:grid; place-items:center; background: rgba(148,163,184,0.14); border:1px solid var(--linea); margin-top:1px; }
+  .regla .marca svg { width: 14px; height: 14px; color: var(--suave); }
+  .regla.pass .marca { background: rgba(45,212,191,0.15); border-color: rgba(45,212,191,0.4); }
+  .regla.pass .marca svg { color: var(--ok); }
+  .regla.fail .marca { background: rgba(251,113,133,0.15); border-color: rgba(251,113,133,0.45); }
+  .regla.fail .marca svg { color: var(--alerta); }
+  .regla .txt { font-size: 0.9rem; }
+  .regla .txt b { color: var(--texto); font-weight: 700; }
+  .regla .txt small { display:block; color: var(--suave); font-family:"JetBrains Mono",monospace; font-size: 0.78rem; margin-top: 2px; }
+  .veredicto { margin-top: 12px; padding: 12px 14px; border-radius: 12px; font-weight: 700; font-size: 0.92rem; display:flex; align-items:center; gap:10px; border:1px solid var(--linea); background: rgba(148,163,184,0.08); color: var(--suave); }
+  .veredicto svg { width: 20px; height: 20px; flex:none; }
+  .veredicto.ok { background: rgba(45,212,191,0.1); border-color: rgba(45,212,191,0.4); color: #99f6e4; }
+  .veredicto.bad { background: rgba(251,113,133,0.1); border-color: rgba(251,113,133,0.45); color: #fecaca; }
+  .veredicto code { font-family:"JetBrains Mono",monospace; font-size:0.82rem; }
+</style>
+</head>
+<body>
+
+<div class="fondo"></div>
+<div class="orbe a"></div><div class="orbe b"></div><div class="orbe c"></div>
+<div class="progreso" id="progreso"></div>
+
+<nav class="nav-puntos" id="navPuntos"></nav>
+
+<!-- ================= PORTADA ================= -->
+<section class="slide" id="portada" data-titulo="Inicio">
+  <div class="slide-inner">
+    <span class="kicker reveal"><i data-lucide="leaf"></i> Tutorial Spring Boot · Juan José Gallego Mesa</span>
+    <h1 class="reveal d1">Tutorial 2: <span class="grad">de la entidad</span><br />a la API — Validación, DTO y Servicio</h1>
+    <p class="lead reveal d2">
+      Ya tienes el <b>modelo</b> y el <b>repositorio</b> de <b>Usuario</b> (Tutorial 1).
+      Ahora construimos la <b>capa de negocio</b>: una <b>validación</b> reutilizable con su interfaz e
+      implementación, los <b>DTO</b> como POJOs planos (sin mapper) y el <b>servicio</b> con
+      <code>IServicio</code> / <code>ServicioImpl</code> e <b>inyección por constructor</b>. Todo resuelto sobre las HU de <b>Usuario</b>.
+    </p>
+    <div class="toc reveal d3">
+      <a href="#mapa"><i data-lucide="layers"></i> Dónde encaja</a>
+      <a href="#val-hu"><i data-lucide="shield-check"></i> HU · Validación</a>
+      <a href="#val-interfaz"><i data-lucide="file-code-2"></i> Interfaz + excepción</a>
+      <a href="#val-impl"><i data-lucide="check-check"></i> Implementación</a>
+      <a href="#val-probador"><i data-lucide="flask-conical"></i> Probador</a>
+      <a href="#dto-hu"><i data-lucide="package"></i> HU · DTO</a>
+      <a href="#dto-porque"><i data-lucide="help-circle"></i> Por qué DTO</a>
+      <a href="#dto-clases"><i data-lucide="boxes"></i> Request / Response</a>
+      <a href="#dto-record"><i data-lucide="diff"></i> record vs class</a>
+      <a href="#dto-conversion"><i data-lucide="arrow-left-right"></i> Conversión POO</a>
+      <a href="#srv-hu"><i data-lucide="cog"></i> HU · Servicio</a>
+      <a href="#srv-inyeccion"><i data-lucide="plug"></i> Inyección</a>
+      <a href="#srv-interfaz"><i data-lucide="list-tree"></i> IUsuarioServicio</a>
+      <a href="#srv-impl"><i data-lucide="settings-2"></i> ServicioImpl</a>
+      <a href="#srv-flujo"><i data-lucide="git-branch"></i> Flujo completo</a>
+      <a href="#http-codes"><i data-lucide="signpost"></i> Códigos HTTP</a>
+      <a href="#conceptos"><i data-lucide="book-open"></i> Conceptos</a>
+    </div>
+    <p class="firma reveal d4"><i data-lucide="graduation-cap"></i> Material de clase · desarrollado por el Prof. Juan José Gallego Mesa, M.Sc.</p>
+    <p class="pista reveal d4"><i data-lucide="chevrons-down"></i> Desliza o usa las flechas del teclado</p>
+  </div>
+</section>
+
+<!-- ================= MAPA ================= -->
+<section class="slide" id="mapa" data-titulo="Dónde encaja">
+  <div class="slide-inner">
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="layers"></i></span>
+      <div><span class="kicker">El recorrido</span><h2>¿Dónde viven estas 3 capas?</h2></div>
+    </div>
+    <p class="sub reveal d1">
+      La petición entra por el <b>Controlador</b> y baja al <b>Servicio</b>. Ahí es donde hoy trabajamos:
+      el servicio <b>valida</b>, convierte con <b>DTO</b> y usa el <b>repositorio</b> para llegar a la <b>BD</b>.
+    </p>
+
+    <div class="capas reveal d2">
+      <div class="capa">
+        <div class="ic"><i data-lucide="monitor-smartphone"></i></div>
+        <h4>Cliente</h4><small>Pide y recibe JSON</small>
+        <span class="tag">HTTP</span>
+      </div>
+      <div class="flecha-h"><i data-lucide="arrow-right"></i></div>
+      <div class="capa">
+        <div class="ic"><i data-lucide="route"></i></div>
+        <h4>Controlador</h4><small>Recibe la petición REST</small>
+        <span class="tag">@RestController</span>
+      </div>
+      <div class="flecha-h"><i data-lucide="arrow-right"></i></div>
+      <div class="capa foco">
+        <div class="ic"><i data-lucide="cog"></i></div>
+        <h4>Servicio</h4><small>Valida · mapea DTO · orquesta</small>
+        <span class="tag">@Service</span>
+      </div>
+      <div class="flecha-h"><i data-lucide="arrow-right"></i></div>
+      <div class="capa">
+        <div class="ic"><i data-lucide="search"></i></div>
+        <h4>Repositorio</h4><small>Acceso a datos</small>
+        <span class="tag">JpaRepository</span>
+      </div>
+      <div class="flecha-h"><i data-lucide="arrow-right"></i></div>
+      <div class="capa">
+        <div class="ic"><i data-lucide="database"></i></div>
+        <h4>Base de datos</h4><small>Tabla usuarios</small>
+        <span class="tag">SQL</span>
+      </div>
+    </div>
+
+    <h3 class="reveal d3 mt" style="margin-bottom:12px;">Tu cadena de HU por tabla</h3>
+    <div class="cadena reveal d3">
+      <span class="eslabon hecho"><i data-lucide="check"></i> Modelo</span>
+      <span class="sep"><i data-lucide="arrow-right"></i></span>
+      <span class="eslabon hecho"><i data-lucide="check"></i> Repositorio</span>
+      <span class="sep"><i data-lucide="arrow-right"></i></span>
+      <span class="eslabon nuevo"><i data-lucide="shield-check"></i> Validación</span>
+      <span class="sep"><i data-lucide="arrow-right"></i></span>
+      <span class="eslabon nuevo"><i data-lucide="package"></i> DTO</span>
+      <span class="sep"><i data-lucide="arrow-right"></i></span>
+      <span class="eslabon nuevo"><i data-lucide="cog"></i> Servicio</span>
+    </div>
+
+    <div class="grid g3 mt reveal d4">
+      <div class="vidrio card">
+        <h3><i data-lucide="shield-check"></i> Validación</h3>
+        <p>Una <b>interfaz</b> con las reglas y una <b>clase @Component</b> que las implementa. Aísla el “¿este dato es válido?”.</p>
+      </div>
+      <div class="vidrio card">
+        <h3><i data-lucide="package"></i> DTO</h3>
+        <p><b>Request</b> (lo que entra) y <b>Response</b> (lo que sale). POJOs planos; la API no expone la entidad.</p>
+      </div>
+      <div class="vidrio card">
+        <h3><i data-lucide="cog"></i> Servicio</h3>
+        <p><code>IServicio</code> + <code>ServicioImpl</code>. Recibe DTOs, valida, usa el repositorio y <b>inyecta por constructor</b>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VALIDACIÓN · HU ================= -->
+<section class="slide" id="val-hu" data-titulo="HU · Validación">
+  <div class="slide-inner">
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="shield-check"></i></span>
+      <div><span class="kicker">Capa 1 de hoy</span><h2>La HU de <span class="grad">Validación</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Antes de guardar un dato hay que asegurarse de que es válido: campos <b>obligatorios</b>,
+      con el <b>formato</b> correcto y del <b>tamaño</b> permitido. Esta es la historia de usuario del docente.
+    </p>
+
+    <div class="hu vidrio reveal d2">
+      <div class="hu-cab">
+        <span class="codigo">USR-V01</span>
+        <span class="titulo">Crear la validación de <code>Usuario</code>: interfaz <code>IUsuarioValidador</code> e implementación</span>
+        <span class="tipo">Validación</span>
+      </div>
+      <div class="hu-body">
+        <span class="lbl">Criterios de aceptación</span>
+        <ul class="criterios">
+          <li><i data-lucide="circle-check"></i> La interfaz <code>IUsuarioValidador</code> declara los métodos de validación de <code>Usuario</code>.</li>
+          <li><i data-lucide="circle-check"></i> <b>Obligatoriedad</b> — <code>validarNombreObligatorio(String)</code>: el <code>nombre</code> no puede ser null ni vacío/en blanco.</li>
+          <li><i data-lucide="circle-check"></i> <b>Formato</b> — <code>validarCorreoFormato(String)</code>: el <code>correo</code> debe cumplir un patrón de email válido.</li>
+          <li><i data-lucide="circle-check"></i> <b>Tamaño</b> — <code>validarContrasenaHashLongitud(String)</code>: el hash BCrypt debe tener 60 caracteres.</li>
+          <li><i data-lucide="circle-check"></i> Método <code>validar(Usuario)</code> que ejecuta las 3 reglas.</li>
+          <li><i data-lucide="circle-check"></i> La clase <code>UsuarioValidadorImpl</code> implementa la interfaz, va anotada con <code>@Component</code> y lanza <code>ResponseStatusException(HttpStatus.BAD_REQUEST, ...)</code> con un mensaje claro (Spring responde 400).</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout mt reveal d3">
+      <h3><i data-lucide="target"></i> ¿Por qué una capa aparte y no validar “a lo bruto” en el controlador?</h3>
+      <ul>
+        <li><b>Responsabilidad única:</b> el validador solo sabe de reglas; el servicio, de negocio.</li>
+        <li><b>Reutilizable:</b> la misma validación sirve al crear y al actualizar.</li>
+        <li><b>Testeable:</b> puedes probar cada regla por separado, sin base de datos ni HTTP.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VALIDACIÓN · INTERFAZ ================= -->
+<section class="slide" id="val-interfaz" data-titulo="Interfaz + excepción">
+  <div class="slide-inner">
+    <a href="#val-hu" class="volver reveal"><i data-lucide="corner-up-left"></i> USR-V01</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="file-code-2"></i></span>
+      <div><span class="kicker">El contrato</span><h2>La interfaz <span class="grad">IUsuarioValidador</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      La <b>interfaz</b> es el <b>contrato</b>: dice <b>qué</b> se valida, no <b>cómo</b>. Empieza con <code>I</code>
+      por convención de clase. Para señalar datos inválidos usamos la excepción que <b>ya trae Spring Web</b>: <code>ResponseStatusException</code>.
+    </p>
+
+    <div class="grid g2">
+      <div class="code reveal d2">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">IUsuarioValidador.java · el contrato</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">public interface IUsuarioValidador {
+
+    // Una regla por método: claro y testeable.
+    void validarNombreObligatorio(String nombre);
+    void validarCorreoFormato(String correo);
+    void validarContrasenaHashLongitud(String contrasenaHash);
+
+    // Orquesta las 3 reglas sobre la entidad completa.
+    void validar(Usuario usuario);
+}</code></pre>
+      </div>
+
+      <div class="code reveal d3">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">ResponseStatusException · sin clases propias</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">// Spring Web YA trae la excepción: no creas ninguna clase.
+// 1er argumento = STATUS HTTP · 2do argumento = mensaje.
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+// Dato inválido -> 400 Bad Request (se usa dentro del Impl):
+throw new ResponseStatusException(
+        HttpStatus.BAD_REQUEST, "El nombre es obligatorio.");</code></pre>
+      </div>
+    </div>
+
+    <div class="grid g3 mt reveal d4">
+      <div class="vidrio card">
+        <h3><i data-lucide="file-signature"></i> Interfaz = contrato</h3>
+        <p>Declara métodos <b>sin cuerpo</b>. Otros pueden depender de <code>IUsuarioValidador</code> sin conocer la implementación.</p>
+      </div>
+      <div class="vidrio card">
+        <h3><i data-lucide="split"></i> Una regla por método</h3>
+        <p>Métodos pequeños y con nombre claro. <code>validar(Usuario)</code> solo las encadena.</p>
+      </div>
+      <div class="vidrio card">
+        <h3><i data-lucide="triangle-alert"></i> ResponseStatusException</h3>
+        <p>La trae Spring Web. Lanzas el <b>status HTTP</b> directo (aquí <code>400</code>) con su mensaje. Sin clases extra ni <code>@ExceptionHandler</code>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VALIDACIÓN · IMPLEMENTACIÓN ================= -->
+<section class="slide" id="val-impl" data-titulo="Implementación">
+  <div class="slide-inner">
+    <a href="#val-hu" class="volver reveal"><i data-lucide="corner-up-left"></i> USR-V01</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="check-check"></i></span>
+      <div><span class="kicker">El cómo</span><h2>La clase <span class="grad">UsuarioValidadorImpl</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Aquí sí está la lógica. La clase <code>implements IUsuarioValidador</code>, va anotada con
+      <code>@Component</code> (para que Spring la inyecte) y cada regla <b>lanza</b> <code>ResponseStatusException</code> con <code>HttpStatus.BAD_REQUEST</code> (400) si el dato no cumple.
+    </p>
+
+    <div class="code reveal d2">
+      <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">UsuarioValidadorImpl.java</span>
+        <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">import java.util.regex.Pattern;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
+
+@Component   // Spring lo registra como bean → se puede inyectar
+public class UsuarioValidadorImpl implements IUsuarioValidador {
+
+    private static final Pattern CORREO =
+        Pattern.compile("^[\\w.+-]+@[\\w-]+\\.[\\w.-]+$");
+
+    @Override
+    public void validarNombreObligatorio(String nombre) {
+        if (nombre == null || nombre.isBlank()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "El nombre es obligatorio.");
+        }
+    }
+
+    @Override
+    public void validarCorreoFormato(String correo) {
+        if (correo == null || !CORREO.matcher(correo).matches()) {
+            throw new ResponseStatusException(
+                HttpStatus.BAD_REQUEST, "El correo no tiene un formato valido.");
+        }
+    }
+
+    @Override
+    public void validarContrasenaHashLongitud(String contrasenaHash) {
+        if (contrasenaHash == null || contrasenaHash.length() != 60) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "La contrasena_hash debe ser un hash BCrypt de 60 caracteres.");
+        }
+    }
+
+    @Override
+    public void validar(Usuario usuario) {          // encadena las 3 reglas
+        validarNombreObligatorio(usuario.getNombre());
+        validarCorreoFormato(usuario.getCorreo());
+        validarContrasenaHashLongitud(usuario.getContrasena_hash());
+    }
+}</code></pre>
+    </div>
+
+    <div class="grid g2 mt reveal d3">
+      <div class="vidrio card">
+        <h3><i data-lucide="component"></i> @Component</h3>
+        <p>Convierte la clase en un <b>bean</b> de Spring. Así el servicio la puede recibir <b>por constructor</b> sin crearla con <code>new</code>.</p>
+      </div>
+      <div class="vidrio card">
+        <h3><i data-lucide="octagon-x"></i> throw = corta el flujo</h3>
+        <p>En cuanto una regla falla, <code>validar()</code> <b>lanza</b> y no sigue. El servicio no llegará a guardar un dato inválido.</p>
+      </div>
+    </div>
+
+    <div class="callout warn mt reveal d4">
+      <h3><i data-lucide="info"></i> Ojo con el orden</h3>
+      <p><code>validar(Usuario)</code> corre las reglas <b>en orden</b> y se detiene en la primera que falle. Por eso el mensaje que ves es el de la <b>primera</b> regla incumplida.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VALIDACIÓN · PROBADOR ================= -->
+<section class="slide" id="val-probador" data-titulo="Probador">
+  <div class="slide-inner">
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="flask-conical"></i></span>
+      <div><span class="kicker">Pruébalo</span><h2>El validador, <span class="grad">en vivo</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Escribe valores (o usa un ejemplo) y pulsa <b>Validar</b>. Se ejecutan <b>las mismas 3 reglas</b> del
+      <code>UsuarioValidadorImpl</code>: verás cuáles pasan y, si algo falla, el <code>ResponseStatusException</code> con su <b>400</b>.
+    </p>
+
+    <div class="probador vidrio reveal d2">
+      <div class="probador-head">
+        <span class="ttl"><i data-lucide="terminal"></i> validador.validar(usuario)</span>
+      </div>
+      <div class="probador-body">
+        <div class="form-val">
+          <div class="campo">
+            <label>nombre</label>
+            <input id="vNombre" type="text" value="Ana Pérez" />
+          </div>
+          <div class="campo">
+            <label>correo</label>
+            <input id="vCorreo" type="text" value="ana@revuelta.edu" />
+          </div>
+          <div class="campo">
+            <label>contraseña (texto plano → se cifra)</label>
+            <input id="vPass" type="text" value="claveSegura8" />
+          </div>
+          <div class="presets">
+            <button class="preset" data-n="Ana Pérez" data-c="ana@revuelta.edu" data-p="claveSegura8">Datos válidos</button>
+            <button class="preset" data-n="" data-c="ana@revuelta.edu" data-p="claveSegura8">Nombre vacío</button>
+            <button class="preset" data-n="Ana Pérez" data-c="ana(arroba)revuelta" data-p="claveSegura8">Correo inválido</button>
+            <button class="preset" data-n="Ana Pérez" data-c="ana@revuelta.edu" data-p="">Sin contraseña</button>
+          </div>
+          <button class="btn-val" id="btnVal"><i data-lucide="play"></i> Validar</button>
+        </div>
+        <div class="reglas" id="reglas">
+          <div class="regla" data-regla="nombre">
+            <span class="marca"><i data-lucide="circle-dashed"></i></span>
+            <span class="txt"><b>Obligatoriedad</b> · nombre no vacío<small id="dNombre">esperando…</small></span>
+          </div>
+          <div class="regla" data-regla="correo">
+            <span class="marca"><i data-lucide="circle-dashed"></i></span>
+            <span class="txt"><b>Formato</b> · correo con patrón válido<small id="dCorreo">esperando…</small></span>
+          </div>
+          <div class="regla" data-regla="pass">
+            <span class="marca"><i data-lucide="circle-dashed"></i></span>
+            <span class="txt"><b>Tamaño</b> · contraseña → hash de 60<small id="dPass">esperando…</small></span>
+          </div>
+          <div class="veredicto" id="veredicto"><i data-lucide="circle-help"></i> Pulsa “Validar” para ejecutar las reglas.</div>
+        </div>
+      </div>
+    </div>
+
+    <p style="color:var(--suave);font-size:0.88rem;margin-top:12px;" class="reveal d3">
+      <i data-lucide="lightbulb" style="width:15px;height:15px;color:var(--aviso);vertical-align:-2px;"></i>
+      La contraseña llega en <b>texto plano</b> al servicio; este la <b>cifra con BCrypt</b> (un hash de 60 caracteres) y esa es la que valida la regla de <b>tamaño</b>.
+    </p>
+  </div>
+</section>
+
+<!-- ================= DTO · HU ================= -->
+<section class="slide" id="dto-hu" data-titulo="HU · DTO">
+  <div class="slide-inner">
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="package"></i></span>
+      <div><span class="kicker">Capa 2 de hoy</span><h2>La HU de <span class="grad">DTO</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      El <b>DTO</b> (Data Transfer Object) es lo que la API recibe y devuelve, <b>en vez de la entidad JPA</b>.
+      Aquí los hacemos <b>a mano con POO</b>, sin librerías de mapeo.
+    </p>
+
+    <div class="hu vidrio reveal d2">
+      <div class="hu-cab">
+        <span class="codigo">USR-D01</span>
+        <span class="titulo">Crear los DTO de <code>Usuario</code> (Request y Response) con conversión POO, sin mapper</span>
+        <span class="tipo">DTO</span>
+      </div>
+      <div class="hu-body">
+        <span class="lbl">Criterios de aceptación</span>
+        <ul class="criterios">
+          <li><i data-lucide="circle-check"></i> <code>UsuarioRequestDTO</code>: lo que el cliente <b>envía</b> (nombre, correo, contraseña en texto plano, rol).</li>
+          <li><i data-lucide="circle-check"></i> <code>UsuarioResponseDTO</code>: lo que la API <b>devuelve</b> (id, nombre, correo, rol, activo, colorAvatar, fechaRegistro).</li>
+          <li><i data-lucide="circle-check"></i> El Response <b>NUNCA</b> incluye <code>contrasena_hash</code> ni la contraseña.</li>
+          <li><i data-lucide="circle-check"></i> Son <b>POJOs planos</b> (campos privados + getters/setters, o un <code>record</code>), sin anotaciones JPA.</li>
+          <li><i data-lucide="circle-check"></i> Conversión POO: <code>toEntity()</code> en el Request y <code>static fromEntity(...)</code> en el Response.</li>
+          <li><i data-lucide="circle-check"></i> <b>Sin</b> MapStruct ni ModelMapper: el mapeo es código Java explícito.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout warn mt reveal d3">
+      <h3><i data-lucide="shield-alert"></i> Regla de oro del DTO</h3>
+      <p>Nunca devuelvas la <b>entidad</b> por la API. Te evita la <b>recursión infinita</b> (Tutorial 1), no <b>filtra</b> campos sensibles como <code>contrasena_hash</code> y <b>desacopla</b> tu API de la base de datos.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DTO · POR QUÉ ================= -->
+<section class="slide" id="dto-porque" data-titulo="Por qué DTO">
+  <div class="slide-inner">
+    <a href="#dto-hu" class="volver reveal"><i data-lucide="corner-up-left"></i> USR-D01</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="help-circle"></i></span>
+      <div><span class="kicker">La razón de fondo</span><h2>¿Por qué usar <span class="grad">DTO</span>?</h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Podrías devolver la entidad <code>Usuario</code> directamente… y te meterías en problemas.
+      El DTO existe para separar <b>lo que guardas</b> (entidad) de <b>lo que expones</b> (API). Estas son las razones:
+    </p>
+
+    <div class="grid g3 reveal d2">
+      <div class="vidrio card"><h3><i data-lucide="shield"></i> 1. Seguridad</h3><p>No filtras campos sensibles. El <code>contrasena_hash</code> jamás sale porque el ResponseDTO ni lo tiene.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="repeat"></i> 2. Sin recursión infinita</h3><p>Las entidades bidireccionales (Usuario↔Prenda) rompen la serialización JSON (Tutorial 1). El DTO plano corta el ciclo.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="unlink"></i> 3. Desacople</h3><p>Tu API no queda atada a la estructura de la BD. Cambias una columna sin romperle el contrato al cliente.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="sliders-horizontal"></i> 4. Control fino</h3><p>Decides qué entra (Request) y qué sale (Response). El cliente no puede mandar <code>id</code> ni <code>activo</code>.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="git-compare"></i> 5. Contrato estable</h3><p>Puedes versionar la API o exponer nombres distintos (<code>colorAvatar</code>) sin tocar la entidad.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="check-check"></i> 6. Payload justo</h3><p>Envías solo lo necesario: respuestas más pequeñas y rápidas, sin relaciones gigantes que nadie pidió.</p></div>
+    </div>
+
+    <div class="grid g2 mt reveal d3">
+      <div class="callout warn">
+        <h3><i data-lucide="circle-x"></i> Sin DTO — devolver la entidad</h3>
+        <ul>
+          <li>Expone <code>contrasena_hash</code> y campos internos.</li>
+          <li>Recursión infinita → <code>500</code>.</li>
+          <li>El cliente ve/manda cualquier campo de la tabla.</li>
+          <li>Cambiar la BD rompe el JSON del cliente.</li>
+        </ul>
+      </div>
+      <div class="callout reco">
+        <h3><i data-lucide="badge-check"></i> Con DTO — objeto de transporte</h3>
+        <ul>
+          <li>Solo expones lo que decides.</li>
+          <li>Plano y finito: sin ciclos.</li>
+          <li>Request y Response separados y claros.</li>
+          <li>La entidad evoluciona sin afectar la API.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DTO · CLASES ================= -->
+<section class="slide" id="dto-clases" data-titulo="Request / Response">
+  <div class="slide-inner">
+    <a href="#dto-hu" class="volver reveal"><i data-lucide="corner-up-left"></i> USR-D01</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="boxes"></i></span>
+      <div><span class="kicker">Dos objetos, dos usos</span><h2><span class="grad">Request</span> vs <span class="grad">Response</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Usamos <b><code>record</code></b> (POJO plano inmutable de Java) para no escribir getters a mano.
+      Fíjate en la diferencia clave: el Request trae <b>contraseña</b>; el Response <b>jamás</b>.
+    </p>
+
+    <div class="grid g2">
+      <div class="reveal d2">
+        <div class="code">
+          <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">UsuarioRequestDTO.java · lo que ENTRA</span>
+            <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">// Lo que el cliente ENVÍA al registrar/actualizar.
+public record UsuarioRequestDTO(
+    String nombre,
+    String correo,
+    String contrasena,   // texto plano; el servicio la cifra
+    String rol
+) {}</code></pre>
+        </div>
+        <p style="color:var(--suave);font-size:0.9rem;margin-top:10px;">
+          <i data-lucide="log-in" style="width:15px;height:15px;color:var(--sky);vertical-align:-2px;"></i>
+          Sin <code>id</code> (lo genera la BD) y sin <code>activo</code>/<code>fecha_registro</code> (los pone el servidor).
+        </p>
+      </div>
+
+      <div class="reveal d3">
+        <div class="code">
+          <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">UsuarioResponseDTO.java · lo que SALE</span>
+            <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">// Lo que la API DEVUELVE. Sin contrasena_hash.
+public record UsuarioResponseDTO(
+    UUID id,
+    String nombre,
+    String correo,
+    String rol,
+    Boolean activo,
+    String colorAvatar,
+    LocalDateTime fechaRegistro
+) {}</code></pre>
+        </div>
+        <p style="color:var(--suave);font-size:0.9rem;margin-top:10px;">
+          <i data-lucide="shield-check" style="width:15px;height:15px;color:var(--ok);vertical-align:-2px;"></i>
+          Ni <code>contrasena_hash</code> ni la contraseña. Solo lo que el cliente puede ver.
+        </p>
+      </div>
+    </div>
+
+    <table class="tabla vidrio mt reveal d4">
+      <thead><tr><th>Campo</th><th>Entidad <code>Usuario</code></th><th>RequestDTO</th><th>ResponseDTO</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>UUID (PK)</td><td>—</td><td>✓</td></tr>
+        <tr><td><code>nombre / correo / rol</code></td><td>✓</td><td>✓</td><td>✓</td></tr>
+        <tr><td><code>contrasena</code> (plano)</td><td>—</td><td>✓ (entra)</td><td>—</td></tr>
+        <tr><td><code>contrasena_hash</code></td><td>✓ (cifrada)</td><td>—</td><td><b style="color:var(--alerta)">✕ nunca</b></td></tr>
+        <tr><td><code>activo / colorAvatar / fechaRegistro</code></td><td>✓</td><td>—</td><td>✓</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout mt reveal d4">
+      <h3><i data-lucide="share-2"></i> ¿Y si la entidad tiene relaciones?</h3>
+      <p>En el DTO, las relaciones se representan por el <b>id (UUID)</b> de la entidad asociada, <b>no</b> como objetos anidados. Ej.: una <code>Prenda</code> llevaría <code>idVendedor (UUID)</code>, no un <code>Usuario</code> completo. Así el DTO queda plano y sin ciclos.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DTO · RECORD VS CLASS ================= -->
+<section class="slide" id="dto-record" data-titulo="record vs class">
+  <div class="slide-inner">
+    <a href="#dto-hu" class="volver reveal"><i data-lucide="corner-up-left"></i> USR-D01</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="diff"></i></span>
+      <div><span class="kicker">La duda del código</span><h2><span class="grad">record</span> vs <span class="grad">class</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Un <code>record</code> (Java 16+) es una clase <b>inmutable</b> pensada para <b>llevar datos</b>. En una línea te da
+      lo que en una clase son ~40. Por eso es ideal para los DTO.
+    </p>
+
+    <div class="grid g2">
+      <div class="code reveal d2">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">Como record · 3 líneas</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">public record UsuarioResponseDTO(
+    UUID id, String nombre, String correo, String rol
+) {}
+
+// El compilador GENERA por ti:
+//   · constructor con los 4 campos
+//   · accesores: id(), nombre(), correo(), rol()
+//   · equals(), hashCode() y toString()
+//   · campos private final (inmutables)</code></pre>
+      </div>
+      <div class="code reveal d3">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">Como class · lo mismo, a mano</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">public class UsuarioResponseDTO {
+    private final UUID id;
+    private final String nombre;
+    private final String correo;
+    private final String rol;
+
+    public UsuarioResponseDTO(UUID id, String nombre,
+                              String correo, String rol) {
+        this.id = id;   this.nombre = nombre;
+        this.correo = correo;   this.rol = rol;
+    }
+    public UUID getId()      { return id; }
+    public String getNombre(){ return nombre; }
+    public String getCorreo(){ return correo; }
+    public String getRol()   { return rol; }
+    // + equals(), hashCode() y toString() a mano…
+}</code></pre>
+      </div>
+    </div>
+
+    <table class="tabla vidrio mt reveal d4">
+      <thead><tr><th></th><th>record</th><th>class</th></tr></thead>
+      <tbody>
+        <tr><td><b>Mutabilidad</b></td><td>Inmutable (campos <code>final</code>)</td><td>Mutable si quieres (setters)</td></tr>
+        <tr><td><b>Getter</b></td><td><code>nombre()</code> (autogenerado)</td><td><code>getNombre()</code> (a mano o Lombok)</td></tr>
+        <tr><td><b>equals / hashCode / toString</b></td><td>Automáticos, por valor</td><td>Los escribes tú</td></tr>
+        <tr><td><b>Herencia</b></td><td>No extiende otras clases</td><td>Sí puede</td></tr>
+        <tr><td><b>Ideal para</b></td><td>DTOs, objetos de solo lectura</td><td>Entidades, lógica, estado que cambia</td></tr>
+      </tbody>
+    </table>
+
+    <div class="grid g2 mt reveal d4">
+      <div class="callout reco">
+        <h3><i data-lucide="package"></i> Usa record para los DTO</h3>
+        <p>Un DTO solo <b>transporta datos</b> y no cambia una vez creado. <code>record</code> = menos código, inmutable y con <code>equals</code> por valor. Perfecto.</p>
+      </div>
+      <div class="callout warn">
+        <h3><i data-lucide="box"></i> La entidad NO puede ser record</h3>
+        <p>JPA necesita un <b>constructor vacío</b> y campos <b>mutables</b> (con setters) para hidratar la entidad desde la BD. Por eso <code>Usuario</code> es una <b>clase</b> y el DTO es un <b>record</b>.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DTO · CONVERSIÓN ================= -->
+<section class="slide" id="dto-conversion" data-titulo="Conversión POO">
+  <div class="slide-inner">
+    <a href="#dto-hu" class="volver reveal"><i data-lucide="corner-up-left"></i> USR-D01</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="arrow-left-right"></i></span>
+      <div><span class="kicker">Sin mapper</span><h2>Convertir <span class="grad">a mano</span>, con POO</h2></div>
+    </div>
+    <p class="sub reveal d1">
+      “Sin mapper” significa: <b>nada de MapStruct ni ModelMapper</b>. La conversión entidad↔DTO la escribes tú,
+      con métodos normales. Dos métodos y listo: <code>toEntity()</code> y <code>fromEntity(...)</code>.
+    </p>
+
+    <div class="grid g2">
+      <div class="code reveal d2">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">UsuarioRequestDTO · toEntity()</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">public record UsuarioRequestDTO(
+    String nombre, String correo,
+    String contrasena, String rol
+) {
+    // DTO -> entidad. OJO: la contrasena NO se copia aquí;
+    // el servicio la cifra y setea el hash aparte.
+    public Usuario toEntity() {
+        Usuario u = new Usuario();
+        u.setNombre(nombre);
+        u.setCorreo(correo);
+        u.setRol(rol);
+        u.setActivo(true);
+        return u;
+    }
+}</code></pre>
+      </div>
+
+      <div class="code reveal d3">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">UsuarioResponseDTO · fromEntity()</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">public record UsuarioResponseDTO(
+    UUID id, String nombre, String correo, String rol,
+    Boolean activo, String colorAvatar, LocalDateTime fechaRegistro
+) {
+    // entidad -> DTO. Método estático de fábrica.
+    // NUNCA copia contrasena_hash.
+    public static UsuarioResponseDTO fromEntity(Usuario u) {
+        return new UsuarioResponseDTO(
+            u.getId(), u.getNombre(), u.getCorreo(), u.getRol(),
+            u.getActivo(), u.getColor_avatar(), u.getFecha_registro()
+        );
+    }
+}</code></pre>
+      </div>
+    </div>
+
+    <div class="grid g2 mt reveal d4">
+      <div class="callout reco">
+        <h3><i data-lucide="hand"></i> Ventajas de hacerlo a mano</h3>
+        <ul>
+          <li>Cero dependencias y cero “magia”: ves exactamente qué se copia.</li>
+          <li>Perfecto para aprender POO: constructores, métodos estáticos de fábrica.</li>
+          <li>Controlas qué se oculta (el hash) sin configurar nada.</li>
+        </ul>
+      </div>
+      <div class="callout warn">
+        <h3><i data-lucide="circle-help"></i> ¿Y el mapper (MapStruct)?</h3>
+        <p>Existe y en proyectos grandes ahorra código repetitivo (genera el mapeo en compilación). Pero aquí <b>no lo usamos</b>: primero hay que entender el mapeo <b>a mano</b>. El mapper es un atajo para después.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SERVICIO · HU ================= -->
+<section class="slide" id="srv-hu" data-titulo="HU · Servicio">
+  <div class="slide-inner">
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="cog"></i></span>
+      <div><span class="kicker">Capa 3 de hoy</span><h2>La HU de <span class="grad">Servicio</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      El servicio es el <b>director de orquesta</b>: recibe DTOs, <b>valida</b>, usa el <b>repositorio</b> y
+      devuelve DTOs. Y sus dependencias entran <b>por el constructor</b>.
+    </p>
+
+    <div class="hu vidrio reveal d2">
+      <div class="hu-cab">
+        <span class="codigo">USR-S01</span>
+        <span class="titulo">Crear el servicio de <code>Usuario</code>: interfaz <code>IUsuarioServicio</code> e implementación con inyección por constructor</span>
+        <span class="tipo">Servicio</span>
+      </div>
+      <div class="hu-body">
+        <span class="lbl">Criterios de aceptación</span>
+        <ul class="criterios">
+          <li><i data-lucide="circle-check"></i> <code>IUsuarioServicio</code> declara: <code>registrar</code>, <code>listar</code>, <code>buscarPorId</code>, <code>actualizar</code>, <code>eliminar</code> (sobre DTOs).</li>
+          <li><i data-lucide="circle-check"></i> <code>UsuarioServicioImpl</code> va anotada con <code>@Service</code> e implementa la interfaz.</li>
+          <li><i data-lucide="circle-check"></i> <b>Inyección por constructor</b>: <code>UsuarioRepository</code>, <code>IUsuarioValidador</code> y <code>PasswordEncoder</code> como <code>private final</code>, sin <code>@Autowired</code> en el campo.</li>
+          <li><i data-lucide="circle-check"></i> <code>registrar</code> valida, comprueba <code>existsByCorreo</code> (si ya existe → <code>409 Conflict</code>), cifra la contraseña y guarda.</li>
+          <li><i data-lucide="circle-check"></i> Devuelve <code>UsuarioResponseDTO</code> (nunca el hash ni la entidad).</li>
+          <li><i data-lucide="circle-check"></i> <code>buscarPorId</code>/<code>actualizar</code>/<code>eliminar</code> lanzan <code>ResponseStatusException(HttpStatus.NOT_FOUND, ...)</code> (404) si el id no existe.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SERVICIO · INYECCIÓN ================= -->
+<section class="slide" id="srv-inyeccion" data-titulo="Inyección">
+  <div class="slide-inner">
+    <a href="#srv-hu" class="volver reveal"><i data-lucide="corner-up-left"></i> USR-S01</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="plug"></i></span>
+      <div><span class="kicker">La clave del servicio</span><h2>Inyección <span class="grad">por constructor</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      <b>Inyectar</b> = que Spring te <b>entregue</b> las dependencias ya creadas, en vez de hacer <code>new</code>.
+      Hay dos formas; usamos la recomendada: <b>por constructor</b>.
+    </p>
+
+    <div class="grid g2">
+      <div class="reveal d2">
+        <div class="code">
+          <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">Por CAMPO · desaconsejada</span>
+            <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">@Service
+public class UsuarioServicioImpl implements IUsuarioServicio {
+
+    @Autowired                       // inyección por CAMPO
+    private UsuarioRepository repo;  // no puede ser final
+
+    // ...
+}</code></pre>
+        </div>
+        <p style="color:var(--suave);font-size:0.9rem;margin-top:10px;">
+          <i data-lucide="x" style="width:15px;height:15px;color:var(--alerta);vertical-align:-2px;"></i>
+          No es <code>final</code>, cuesta más testear (necesitas Spring/reflection) y esconde cuántas dependencias tiene la clase.
+        </p>
+      </div>
+
+      <div class="reveal d3">
+        <div class="code">
+          <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">Por CONSTRUCTOR · recomendada</span>
+            <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">@Service
+public class UsuarioServicioImpl implements IUsuarioServicio {
+
+    private final UsuarioRepository repo;
+    private final IUsuarioValidador validador;
+    private final PasswordEncoder encoder;
+
+    // Un solo constructor → Spring inyecta solo (sin @Autowired).
+    public UsuarioServicioImpl(UsuarioRepository repo,
+                               IUsuarioValidador validador,
+                               PasswordEncoder encoder) {
+        this.repo = repo;
+        this.validador = validador;
+        this.encoder = encoder;
+    }
+}</code></pre>
+        </div>
+        <p style="color:var(--suave);font-size:0.9rem;margin-top:10px;">
+          <i data-lucide="check" style="width:15px;height:15px;color:var(--ok);vertical-align:-2px;"></i>
+          Campos <code>final</code> (inmutables), fácil de testear (le pasas mocks al constructor) y las dependencias quedan a la vista.
+        </p>
+      </div>
+    </div>
+
+    <div class="callout reco mt reveal d4">
+      <h3><i data-lucide="badge-check"></i> Regla práctica</h3>
+      <p>Si la clase tiene un <b>único constructor</b>, Spring inyecta sus parámetros <b>automáticamente</b> — ni siquiera necesitas <code>@Autowired</code>. Campos <code>private final</code> + constructor = el estándar hoy.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SERVICIO · INTERFAZ ================= -->
+<section class="slide" id="srv-interfaz" data-titulo="IUsuarioServicio">
+  <div class="slide-inner">
+    <a href="#srv-hu" class="volver reveal"><i data-lucide="corner-up-left"></i> USR-S01</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="list-tree"></i></span>
+      <div><span class="kicker">El contrato del negocio</span><h2>La interfaz <span class="grad">IUsuarioServicio</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Igual que en validación: primero el <b>contrato</b>. Fíjate en que <b>todo entra y sale como DTO</b>,
+      nunca como entidad <code>Usuario</code>.
+    </p>
+
+    <div class="code reveal d2">
+      <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">IUsuarioServicio.java</span>
+        <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">public interface IUsuarioServicio {
+
+    UsuarioResponseDTO       registrar(UsuarioRequestDTO dto);
+    List&lt;UsuarioResponseDTO&gt; listar();
+    UsuarioResponseDTO       buscarPorId(UUID id);
+    UsuarioResponseDTO       actualizar(UUID id, UsuarioRequestDTO dto);
+    void                     eliminar(UUID id);
+}</code></pre>
+    </div>
+
+    <div class="grid g3 mt reveal d3">
+      <div class="vidrio card"><h3><i data-lucide="log-in"></i> Entra</h3><p>Un <code>UsuarioRequestDTO</code> (o un <code>UUID</code> para buscar/borrar).</p></div>
+      <div class="vidrio card"><h3><i data-lucide="log-out"></i> Sale</h3><p>Un <code>UsuarioResponseDTO</code> (o una lista). Nunca la entidad.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="file-signature"></i> Solo firmas</h3><p>La interfaz no tiene lógica. El <code>Impl</code> pone el cómo.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SERVICIO · IMPL ================= -->
+<section class="slide" id="srv-impl" data-titulo="ServicioImpl">
+  <div class="slide-inner">
+    <a href="#srv-hu" class="volver reveal"><i data-lucide="corner-up-left"></i> USR-S01</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="settings-2"></i></span>
+      <div><span class="kicker">Todo junto</span><h2><span class="grad">UsuarioServicioImpl</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Aquí se juntan las 3 capas: el servicio <b>construye la entidad desde el DTO</b>, la <b>cifra</b>, la <b>valida</b>,
+      la <b>guarda</b> con el repositorio y devuelve un <b>DTO</b>.
+    </p>
+
+    <div class="code reveal d2">
+      <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">UsuarioServicioImpl.java</span>
+        <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service
+public class UsuarioServicioImpl implements IUsuarioServicio {
+
+    private final UsuarioRepository repo;
+    private final IUsuarioValidador validador;
+    private final PasswordEncoder encoder;
+
+    public UsuarioServicioImpl(UsuarioRepository repo,
+                               IUsuarioValidador validador,
+                               PasswordEncoder encoder) {
+        this.repo = repo;
+        this.validador = validador;
+        this.encoder = encoder;
+    }
+
+    @Override
+    public UsuarioResponseDTO registrar(UsuarioRequestDTO dto) {
+        // 1) DTO -> entidad (POO, sin mapper)
+        Usuario usuario = dto.toEntity();
+
+        // 2) Cifro la contrasena en texto plano -> hash BCrypt (60 chars)
+        usuario.setContrasena_hash(encoder.encode(dto.contrasena()));
+
+        // 3) Reglas de negocio + validación
+        if (repo.existsByCorreo(usuario.getCorreo())) {
+            throw new ResponseStatusException(          // 409 Conflict
+                HttpStatus.CONFLICT, "El correo ya esta registrado.");
+        }
+        validador.validar(usuario);   // obligatoriedad, formato, tamaño (400)
+
+        // 4) Persisto y devuelvo un DTO (nunca la entidad ni el hash)
+        Usuario guardado = repo.save(usuario);
+        return UsuarioResponseDTO.fromEntity(guardado);
+    }
+
+    @Override
+    public List&lt;UsuarioResponseDTO&gt; listar() {
+        return repo.findAll().stream()
+                   .map(UsuarioResponseDTO::fromEntity)
+                   .toList();
+    }
+
+    @Override
+    public UsuarioResponseDTO buscarPorId(UUID id) {
+        Usuario usuario = repo.findById(id)
+            .orElseThrow(() -> new ResponseStatusException(   // 404 Not Found
+                HttpStatus.NOT_FOUND, "Usuario no encontrado: " + id));
+        return UsuarioResponseDTO.fromEntity(usuario);
+    }
+
+    @Override
+    public void eliminar(UUID id) {
+        if (!repo.existsById(id)) {
+            throw new ResponseStatusException(              // 404 Not Found
+                HttpStatus.NOT_FOUND, "Usuario no encontrado: " + id);
+        }
+        repo.deleteById(id);
+    }
+}</code></pre>
+    </div>
+
+    <div class="callout mt reveal d3">
+      <h3><i data-lucide="list-ordered"></i> El orden importa</h3>
+      <p><b>1)</b> mapear DTO→entidad · <b>2)</b> cifrar la contraseña · <b>3)</b> validar y comprobar correo único · <b>4)</b> guardar y devolver DTO. Si algo falla en el paso 3, <b>nunca</b> se llega a guardar.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= SERVICIO · FLUJO ================= -->
+<section class="slide" id="srv-flujo" data-titulo="Flujo completo">
+  <div class="slide-inner">
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="git-branch"></i></span>
+      <div><span class="kicker">La foto completa</span><h2>Una petición, <span class="grad">de punta a punta</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Así viaja un <code>POST /api/usuarios</code> por todas las piezas que construiste hoy.
+    </p>
+
+    <div class="capas reveal d2">
+      <div class="capa">
+        <div class="ic"><i data-lucide="package"></i></div>
+        <h4>RequestDTO</h4><small>llega el JSON del cliente</small>
+        <span class="tag">nombre, correo, contraseña</span>
+      </div>
+      <div class="flecha-h"><i data-lucide="arrow-right"></i></div>
+      <div class="capa foco">
+        <div class="ic"><i data-lucide="cog"></i></div>
+        <h4>Servicio</h4><small>toEntity · cifra · valida</small>
+        <span class="tag">@Service</span>
+      </div>
+      <div class="flecha-h"><i data-lucide="arrow-right"></i></div>
+      <div class="capa">
+        <div class="ic"><i data-lucide="shield-check"></i></div>
+        <h4>Validador</h4><small>3 reglas o excepción</small>
+        <span class="tag">@Component</span>
+      </div>
+      <div class="flecha-h"><i data-lucide="arrow-right"></i></div>
+      <div class="capa">
+        <div class="ic"><i data-lucide="search"></i></div>
+        <h4>Repositorio</h4><small>save() en la BD</small>
+        <span class="tag">JpaRepository</span>
+      </div>
+      <div class="flecha-h"><i data-lucide="arrow-right"></i></div>
+      <div class="capa">
+        <div class="ic"><i data-lucide="package-check"></i></div>
+        <h4>ResponseDTO</h4><small>vuelve al cliente</small>
+        <span class="tag">sin el hash</span>
+      </div>
+    </div>
+
+    <div class="grid g2 mt">
+      <div class="code reveal d3">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">POST /api/usuarios · entra</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-json">{
+  "nombre": "Ana Pérez",
+  "correo": "ana@revuelta.edu",
+  "contrasena": "claveSegura8",
+  "rol": "estudiante"
+}</code></pre>
+      </div>
+      <div class="code reveal d4">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">201 Created · sale (sin hash)</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-json">{
+  "id": "6f1c...e2",
+  "nombre": "Ana Pérez",
+  "correo": "ana@revuelta.edu",
+  "rol": "estudiante",
+  "activo": true,
+  "colorAvatar": null,
+  "fechaRegistro": "2026-07-14T10:22:31"
+}</code></pre>
+      </div>
+    </div>
+
+    <div class="callout reco mt reveal d4">
+      <h3><i data-lucide="sparkles"></i> Lo que lograste</h3>
+      <p>La contraseña entró en texto plano y <b>salió cifrada e invisible</b>; los datos inválidos <b>nunca</b> tocan la BD; y la API habla con <b>DTOs</b>, no con entidades. Eso es una capa de negocio limpia.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CÓDIGOS HTTP ================= -->
+<section class="slide" id="http-codes" data-titulo="Códigos HTTP">
+  <div class="slide-inner">
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="signpost"></i></span>
+      <div><span class="kicker">Referencia</span><h2>Códigos de estado <span class="grad">HTTP</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Toda respuesta HTTP trae un número de 3 dígitos. El <b>primer dígito</b> marca la familia:
+      así sabes de un vistazo si algo salió bien, si es culpa del cliente o del servidor.
+    </p>
+
+    <div class="grid g2 reveal d2">
+      <div class="vidrio card">
+        <h3><i data-lucide="circle-check"></i> 2xx · Éxito</h3>
+        <p>La petición se procesó bien.<br />
+          <span class="pill ok">200 OK</span> <span class="pill ok">201 Created</span> <span class="pill ok">204 No Content</span></p>
+      </div>
+      <div class="vidrio card">
+        <h3><i data-lucide="corner-up-right"></i> 3xx · Redirección</h3>
+        <p>El recurso está en otra parte o no cambió.<br />
+          <span class="pill azul">301 Moved</span> <span class="pill azul">302 Found</span> <span class="pill azul">304 Not Modified</span></p>
+      </div>
+      <div class="vidrio card">
+        <h3><i data-lucide="user-x"></i> 4xx · Error del cliente</h3>
+        <p>La petición está mal: falta algo, formato inválido, no existe.<br />
+          <span class="pill warn">400</span> <span class="pill warn">401</span> <span class="pill warn">403</span> <span class="pill warn">404</span> <span class="pill warn">409</span></p>
+      </div>
+      <div class="vidrio card">
+        <h3><i data-lucide="server-crash"></i> 5xx · Error del servidor</h3>
+        <p>Falló el servidor, no el cliente.<br />
+          <span class="pill rojo">500</span> <span class="pill rojo">502</span> <span class="pill rojo">503</span></p>
+      </div>
+    </div>
+
+    <h3 class="reveal d3 mt" style="margin-bottom:6px;">Catálogo completo (los más comunes)</h3>
+    <p style="color:var(--suave);font-size:0.9rem;margin-bottom:14px;" class="reveal d3">
+      Marcados con <span class="pill ok">usado</span> los de este tutorial. No memorices todos: entiende la <b>familia</b> y ten esta tabla a mano.
+    </p>
+
+    <div class="grid g2 reveal d3">
+      <table class="tabla vidrio">
+        <thead><tr><th colspan="2" style="color:#99f6e4">2xx · Éxito</th></tr><tr><th>Código</th><th>Cuándo usarlo</th></tr></thead>
+        <tbody>
+          <tr><td><code>200</code> OK <span class="pill ok">usado</span></td><td>Petición correcta que devuelve datos (GET, PUT)</td></tr>
+          <tr><td><code>201</code> Created <span class="pill ok">usado</span></td><td>Se creó un recurso nuevo (POST). Suele traer <code>Location</code></td></tr>
+          <tr><td><code>202</code> Accepted</td><td>Aceptada, se procesará después (tareas asíncronas)</td></tr>
+          <tr><td><code>204</code> No Content <span class="pill ok">usado</span></td><td>Éxito pero sin cuerpo de respuesta (DELETE)</td></tr>
+          <tr><td><code>206</code> Partial Content</td><td>Respuesta parcial (descargas por rangos)</td></tr>
+        </tbody>
+      </table>
+
+      <table class="tabla vidrio">
+        <thead><tr><th colspan="2" style="color:#bfdbfe">3xx · Redirección</th></tr><tr><th>Código</th><th>Cuándo usarlo</th></tr></thead>
+        <tbody>
+          <tr><td><code>301</code> Moved Permanently</td><td>El recurso cambió de URL para siempre</td></tr>
+          <tr><td><code>302</code> Found</td><td>Redirección temporal a otra URL</td></tr>
+          <tr><td><code>304</code> Not Modified</td><td>No cambió: usa tu copia en caché</td></tr>
+          <tr><td><code>307</code> Temporary Redirect</td><td>Temporal, conservando el método HTTP</td></tr>
+          <tr><td><code>308</code> Permanent Redirect</td><td>Permanente, conservando el método HTTP</td></tr>
+        </tbody>
+      </table>
+
+      <table class="tabla vidrio">
+        <thead><tr><th colspan="2" style="color:#fde68a">4xx · Error del cliente</th></tr><tr><th>Código</th><th>Cuándo usarlo</th></tr></thead>
+        <tbody>
+          <tr><td><code>400</code> Bad Request <span class="pill ok">usado</span></td><td>Petición malformada o dato inválido (validación)</td></tr>
+          <tr><td><code>401</code> Unauthorized</td><td>Falta autenticación (no hay token o es inválido)</td></tr>
+          <tr><td><code>403</code> Forbidden</td><td>Autenticado, pero sin permiso para eso</td></tr>
+          <tr><td><code>404</code> Not Found <span class="pill ok">usado</span></td><td>El recurso o el id no existe</td></tr>
+          <tr><td><code>405</code> Method Not Allowed</td><td>Método HTTP no permitido en esa ruta</td></tr>
+          <tr><td><code>409</code> Conflict <span class="pill ok">usado</span></td><td>Choca con el estado actual (correo duplicado)</td></tr>
+          <tr><td><code>415</code> Unsupported Media Type</td><td><code>Content-Type</code> no soportado (p. ej. no es JSON)</td></tr>
+          <tr><td><code>422</code> Unprocessable Entity</td><td>Sintaxis OK, pero semántica inválida (otra opción de validación)</td></tr>
+          <tr><td><code>429</code> Too Many Requests</td><td>Demasiadas peticiones (rate limit)</td></tr>
+        </tbody>
+      </table>
+
+      <table class="tabla vidrio">
+        <thead><tr><th colspan="2" style="color:#fecaca">5xx · Error del servidor</th></tr><tr><th>Código</th><th>Cuándo usarlo</th></tr></thead>
+        <tbody>
+          <tr><td><code>500</code> Internal Server Error <span class="pill ok">usado</span></td><td>Bug no controlado en el backend (evítalo)</td></tr>
+          <tr><td><code>501</code> Not Implemented</td><td>El servidor no soporta esa función todavía</td></tr>
+          <tr><td><code>502</code> Bad Gateway</td><td>Un proxy/gateway recibió una respuesta inválida</td></tr>
+          <tr><td><code>503</code> Service Unavailable</td><td>Servidor saturado o en mantenimiento</td></tr>
+          <tr><td><code>504</code> Gateway Timeout</td><td>Un servicio del que dependes no respondió a tiempo</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn mt reveal d3">
+      <h3><i data-lucide="circle-help"></i> Confusiones típicas</h3>
+      <ul>
+        <li><b>401 vs 403</b>: <code>401</code> = “no sé quién eres” (falta login); <code>403</code> = “sé quién eres, pero no puedes”.</li>
+        <li><b>400 vs 422</b>: <code>400</code> = la petición está mal formada; <code>422</code> = está bien formada pero los datos no pasan las reglas. Muchos equipos usan <code>400</code> para todo por simplicidad (como aquí).</li>
+        <li><b>200 vs 201 vs 204</b>: hay cuerpo y ya existía → <code>200</code>; se creó algo → <code>201</code>; éxito sin cuerpo → <code>204</code>.</li>
+      </ul>
+    </div>
+
+    <div class="grid g2 mt reveal d4">
+      <div class="callout reco">
+        <h3><i data-lucide="brain"></i> La regla mental</h3>
+        <p><b>4xx = culpa del cliente</b> → “arregla tu petición”. <b>5xx = culpa del servidor</b> → “el backend falló”. Con <code>ResponseStatusException</code> tú eliges el 4xx correcto; el <code>500</code> aparece solo cuando algo se te escapa sin controlar.</p>
+      </div>
+      <div class="code">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">ResponseStatusException · el status manda</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">// 400 · dato inválido (en el validador)
+throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "...");
+
+// 404 · no existe (en el servicio)
+throw new ResponseStatusException(HttpStatus.NOT_FOUND, "...");
+
+// 409 · conflicto: correo duplicado (en el servicio)
+throw new ResponseStatusException(HttpStatus.CONFLICT, "...");</code></pre>
+      </div>
+    </div>
+
+    <div class="callout warn mt reveal d4">
+      <h3><i data-lucide="lightbulb"></i> Tip: el status del éxito también se elige</h3>
+      <p>Para el <b>201</b> al crear y el <b>204</b> al borrar, el <b>controlador</b> (siguiente tutorial) usa <code>@ResponseStatus(HttpStatus.CREATED)</code> o devuelve un <code>ResponseEntity</code>. <code>ResponseStatusException</code> es solo para los <b>errores</b>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= CONCEPTOS ================= -->
+<section class="slide" id="conceptos" data-titulo="Conceptos">
+  <div class="slide-inner">
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="book-open"></i></span>
+      <div><span class="kicker">Para repasar</span><h2>Glosario rápido</h2></div>
+    </div>
+
+    <div class="grid g3 reveal d1">
+      <div class="vidrio card"><h3><i data-lucide="file-signature"></i> Interfaz (I…)</h3><p>El <b>contrato</b>: qué métodos existen, sin el cómo. <code>IUsuarioValidador</code>, <code>IUsuarioServicio</code>.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="settings-2"></i> …Impl</h3><p>La <b>implementación</b> del contrato. Aquí vive la lógica.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="component"></i> @Component / @Service</h3><p>Registran la clase como <b>bean</b> para que Spring la inyecte. <code>@Service</code> = negocio.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="plug"></i> Inyección por constructor</h3><p>Dependencias como <code>private final</code> recibidas en el constructor. Sin <code>@Autowired</code> en campo.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="package"></i> DTO</h3><p>Objeto de transporte. <b>Request</b> (entra) y <b>Response</b> (sale). Nunca la entidad.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="arrow-left-right"></i> toEntity / fromEntity</h3><p>Conversión <b>POO sin mapper</b>: DTO→entidad y entidad→DTO, a mano.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="triangle-alert"></i> ResponseStatusException</h3><p>Excepción de Spring Web. Lanzas el <b>status HTTP</b> directo: <code>400</code> inválido, <code>404</code> no existe, <code>409</code> duplicado.</p></div>
+      <div class="vidrio card"><h3><i data-lucide="signpost"></i> HttpStatus</h3><p>Enum con los códigos: <code>BAD_REQUEST</code>, <code>NOT_FOUND</code>, <code>CONFLICT</code>, <code>CREATED</code>…</p></div>
+      <div class="vidrio card"><h3><i data-lucide="lock"></i> PasswordEncoder</h3><p>Cifra la contraseña con <b>BCrypt</b> → un hash de 60 caracteres. La entidad guarda el hash, no la clave.</p></div>
+    </div>
+
+    <div class="callout reco mt reveal d2">
+      <h3><i data-lucide="badge-check"></i> Regla de oro del día</h3>
+      <p>Cada capa con una responsabilidad: el <b>validador</b> valida, el <b>DTO</b> transporta, el <b>servicio</b> orquesta.
+      Se conectan con <b>interfaces</b> e <b>inyección por constructor</b>, y la contraseña <b>jamás</b> sale por la API.</p>
+    </div>
+
+    <p class="firma reveal d3"><i data-lucide="graduation-cap"></i> Tutorial Spring Boot — Prof. Juan José Gallego Mesa, M.Sc.</p>
+  </div>
+</section>
+
+<!-- Scripts -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script>
+  // Iconos
+  if (window.lucide) lucide.createIcons();
+  // Resaltado
+  if (window.Prism) Prism.highlightAll();
+
+  // Botones de copiar
+  document.querySelectorAll(".copy").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const code = btn.closest(".code").querySelector("code");
+      const texto = code.innerText;
+      navigator.clipboard.writeText(texto).then(() => {
+        const span = btn.querySelector("span");
+        const prev = span.textContent;
+        btn.classList.add("ok");
+        span.textContent = "¡Copiado!";
+        setTimeout(() => { btn.classList.remove("ok"); span.textContent = prev; }, 1600);
+        if (window.lucide) lucide.createIcons();
+      });
+    });
+  });
+
+  // Aparición al hacer scroll
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting) e.target.classList.add("in"); });
+  }, { threshold: 0.12 });
+  document.querySelectorAll(".reveal").forEach((el) => io.observe(el));
+
+  // Navegación de puntos + slide activo
+  const slides = Array.from(document.querySelectorAll(".slide"));
+  const nav = document.getElementById("navPuntos");
+  slides.forEach((s, i) => {
+    const a = document.createElement("a");
+    a.href = "#" + s.id;
+    a.innerHTML = '<span>' + (s.dataset.titulo || ("Slide " + (i + 1))) + '</span>';
+    nav.appendChild(a);
+  });
+  const puntos = Array.from(nav.children);
+  const ioNav = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (e.isIntersecting) {
+        const idx = slides.indexOf(e.target);
+        puntos.forEach((p, i) => p.classList.toggle("activo", i === idx));
+      }
+    });
+  }, { threshold: 0.5 });
+  slides.forEach((s) => ioNav.observe(s));
+
+  // Barra de progreso
+  const progreso = document.getElementById("progreso");
+  window.addEventListener("scroll", () => {
+    const h = document.documentElement;
+    const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+    progreso.style.width = pct + "%";
+  });
+
+  // Navegación con flechas del teclado
+  function slideActual() {
+    const mid = window.scrollY + window.innerHeight / 2;
+    return slides.findIndex((s) => s.offsetTop <= mid && s.offsetTop + s.offsetHeight > mid);
+  }
+  window.addEventListener("keydown", (e) => {
+    // No secuestrar las flechas mientras se escribe en el probador.
+    if (["INPUT", "TEXTAREA"].includes((e.target.tagName || "").toUpperCase())) return;
+    const i = slideActual();
+    if ((e.key === "ArrowDown" || e.key === "ArrowRight" || e.key === "PageDown") && i < slides.length - 1) {
+      e.preventDefault(); slides[i + 1].scrollIntoView({ behavior: "smooth" });
+    }
+    if ((e.key === "ArrowUp" || e.key === "ArrowLeft" || e.key === "PageUp") && i > 0) {
+      e.preventDefault(); slides[i - 1].scrollIntoView({ behavior: "smooth" });
+    }
+  });
+</script>
+
+<script>
+  // Probador del validador — corre las mismas 3 reglas del UsuarioValidadorImpl.
+  (function () {
+    const btn = document.getElementById("btnVal");
+    if (!btn) return;
+    const inNombre = document.getElementById("vNombre");
+    const inCorreo = document.getElementById("vCorreo");
+    const inPass = document.getElementById("vPass");
+    const veredicto = document.getElementById("veredicto");
+    const CORREO = /^[\w.+-]+@[\w-]+\.[\w.-]+$/;
+
+    function pintarRegla(regla, ok, detalle) {
+      const el = document.querySelector('.regla[data-regla="' + regla + '"]');
+      el.classList.remove("pass", "fail");
+      el.classList.add(ok ? "pass" : "fail");
+      const marca = el.querySelector(".marca");
+      marca.innerHTML = '<i data-lucide="' + (ok ? "check" : "x") + '"></i>';
+      el.querySelector("small").textContent = detalle;
+    }
+
+    function setVeredicto(clase, icono, html) {
+      veredicto.className = "veredicto " + clase;
+      veredicto.innerHTML = '<i data-lucide="' + icono + '"></i> ' + html;
+    }
+
+    function validar() {
+      const nombre = inNombre.value;
+      const correo = inCorreo.value;
+      const pass = inPass.value;
+
+      // Regla 1 — obligatoriedad del nombre
+      const okNombre = nombre != null && nombre.trim() !== "";
+      pintarRegla("nombre", okNombre,
+        okNombre ? 'nombre = "' + nombre + '"' : "nombre vacío o en blanco");
+
+      // Regla 2 — formato del correo
+      const okCorreo = CORREO.test(correo || "");
+      pintarRegla("correo", okCorreo,
+        okCorreo ? "coincide con el patrón de email" : '"' + correo + '" no es un email válido');
+
+      // Regla 3 — la contraseña se cifra a un hash BCrypt de 60
+      const okPass = (pass || "").length >= 8;
+      pintarRegla("pass", okPass,
+        okPass ? "contrasena_hash → 60 caracteres ✓" : "contraseña ausente/corta → hash inválido");
+
+      // Veredicto: validar(Usuario) se detiene en la PRIMERA regla que falla.
+      let mensaje = null;
+      if (!okNombre) mensaje = "El nombre es obligatorio.";
+      else if (!okCorreo) mensaje = "El correo no tiene un formato valido.";
+      else if (!okPass) mensaje = "La contrasena_hash debe ser un hash BCrypt de 60 caracteres.";
+
+      if (mensaje) {
+        setVeredicto("bad", "octagon-alert",
+          'throw new ResponseStatusException(<code>HttpStatus.BAD_REQUEST, "' + mensaje + '"</code>) → <b>400</b>');
+      } else {
+        setVeredicto("ok", "circle-check",
+          "Usuario válido → el servicio comprueba el correo único y hace <code>repo.save()</code>.");
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+
+    btn.addEventListener("click", validar);
+
+    document.querySelectorAll(".preset").forEach((p) => {
+      p.addEventListener("click", () => {
+        inNombre.value = p.dataset.n;
+        inCorreo.value = p.dataset.c;
+        inPass.value = p.dataset.p;
+        validar();
+      });
+    });
+  })();
+</script>
+</body>
+</html>
