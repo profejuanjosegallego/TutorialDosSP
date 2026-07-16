@@ -366,13 +366,16 @@
       <a href="#mapa"><i data-lucide="layers"></i> Dónde encaja</a>
       <a href="#val-hu"><i data-lucide="shield-check"></i> HU · Validación</a>
       <a href="#val-interfaz"><i data-lucide="file-code-2"></i> Interfaz + excepción</a>
+      <a href="#patron-interfaz-impl"><i data-lucide="puzzle"></i> ¿Interfaz + Impl?</a>
       <a href="#val-impl"><i data-lucide="check-check"></i> Implementación</a>
+      <a href="#val-regex"><i data-lucide="regex"></i> Regex</a>
       <a href="#val-probador"><i data-lucide="flask-conical"></i> Probador</a>
       <a href="#dto-hu"><i data-lucide="package"></i> HU · DTO</a>
       <a href="#dto-porque"><i data-lucide="help-circle"></i> Por qué DTO</a>
       <a href="#dto-clases"><i data-lucide="boxes"></i> Request / Response</a>
       <a href="#dto-record"><i data-lucide="diff"></i> record vs class</a>
       <a href="#dto-conversion"><i data-lucide="arrow-left-right"></i> Conversión POO</a>
+      <a href="#dto-tipos"><i data-lucide="combine"></i> Tipos de DTO</a>
       <a href="#srv-hu"><i data-lucide="cog"></i> HU · Servicio</a>
       <a href="#srv-inyeccion"><i data-lucide="plug"></i> Inyección</a>
       <a href="#srv-interfaz"><i data-lucide="list-tree"></i> IUsuarioServicio</a>
@@ -562,6 +565,94 @@ throw new ResponseStatusException(
   </div>
 </section>
 
+<!-- ================= PATRÓN · INTERFAZ + IMPLEMENTACIÓN ================= -->
+<section class="slide" id="patron-interfaz-impl" data-titulo="¿Interfaz + Impl?">
+  <div class="slide-inner">
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="puzzle"></i></span>
+      <div><span class="kicker">Buena práctica</span><h2>Interfaz <span class="grad">y luego</span> implementación: ¿por qué?</h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Fíjate en el patrón: primero <code>IUsuarioValidador</code> (el <b>contrato</b>) y luego
+      <code>UsuarioValidadorImpl</code> (el <b>cómo</b>). Lo repetiremos en el servicio
+      (<code>IUsuarioServicio</code> / <code>UsuarioServicioImpl</code>). Esta es la razón — y una respuesta honesta a
+      “¿esto se usa de verdad?”.
+    </p>
+
+    <div class="callout mt-s reveal d1">
+      <h3><i data-lucide="plug-zap"></i> La analogía del enchufe</h3>
+      <p>La <b>interfaz es la toma de corriente</b> de la pared: un contrato con forma fija. La <b>implementación es el aparato</b> que enchufas (un cargador, una lámpara). La pared no sabe qué le conectas; solo exige que <b>encaje en el contrato</b>. Puedes cambiar el aparato sin tocar la instalación eléctrica. Aquí <b>Spring es quien “enchufa”</b> la implementación (<code>@Component</code>) en el servicio por ti.</p>
+    </div>
+
+    <div class="grid g2 mt">
+      <div class="code reveal d2">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">Depender del CONTRATO, no de la clase</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">@Service
+public class UsuarioServicioImpl implements IUsuarioServicio {
+
+    // El servicio depende de la INTERFAZ, no de la clase concreta.
+    private final IUsuarioValidador validador;
+
+    public UsuarioServicioImpl(IUsuarioValidador validador) {
+        this.validador = validador;   // Spring inyecta el @Component que la implementa
+    }
+
+    // Mañana cambias UsuarioValidadorImpl por otra clase
+    // y este servicio NO se entera: programa contra el "qué", no el "cómo".
+}</code></pre>
+      </div>
+
+      <div class="reveal d3" style="display:flex;flex-direction:column;gap:14px;">
+        <div class="vidrio card">
+          <h3><i data-lucide="unplug"></i> Bajo acoplamiento (SOLID · “D”)</h3>
+          <p>La capa de arriba depende de una <b>abstracción</b>, no de un detalle. Es la <b>inversión de dependencias</b>: el contrato manda, la implementación obedece.</p>
+        </div>
+        <div class="vidrio card">
+          <h3><i data-lucide="replace"></i> Intercambiable</h3>
+          <p>¿Otra forma de validar o de cifrar? Escribes otra clase que <code>implements</code> la misma interfaz. Nadie más cambia.</p>
+        </div>
+        <div class="vidrio card">
+          <h3><i data-lucide="flask-conical"></i> Testeable con mocks</h3>
+          <p>En un test le pasas un <b>validador falso</b> que cumple el contrato y pruebas el servicio <b>sin</b> BD ni HTTP.</p>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="reveal d4 mb mt">¿Y si la interfaz no existiera?</h3>
+    <div class="grid g2 reveal d4 mb">
+      <div class="code">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">Acoplado: atado a la clase concreta</span></div>
+<pre><code class="language-java">@Service
+public class UsuarioServicioImpl {
+
+    // Sin interfaz: dependes de la CLASE concreta y la creas a mano.
+    private final UsuarioValidadorImpl validador = new UsuarioValidadorImpl();
+    //                                 ^ pegado a ESTA clase (acoplamiento fuerte)
+}</code></pre>
+      </div>
+      <div class="callout warn">
+        <h3><i data-lucide="unplug"></i> Pasaría esto (alto acoplamiento)</h3>
+        <ul>
+          <li><b>Cambiar de implementación</b> obliga a <b>editar el servicio</b> (y a todo el que la use): el cambio se propaga en cadena.</li>
+          <li><b>No puedes testear con un mock:</b> el servicio queda pegado a la clase real, así que tus pruebas necesitan BD y HTTP.</li>
+          <li><b>Tener dos validadores</b> (uno estricto, otro suave) se vuelve imposible sin reescribir.</li>
+          <li>Con <code>new</code> te saltas a Spring: pierdes la inyección, <code>@Transactional</code> y la gestión del bean.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout reco mt reveal d4">
+      <h3><i data-lucide="badge-check"></i> ¿Está bien? ¿Se usa de verdad?</h3>
+      <p><b>Sí, es idiomático en Spring</b> y lo verás en casi cualquier proyecto profesional: Spring inyecta <b>por el tipo de la interfaz</b> y los proxies de <code>@Transactional</code> / AOP salen más limpios sobre interfaces.</p>
+      <ul>
+        <li><b>El matiz honesto:</b> si hay <b>una sola implementación que nunca cambiará</b>, la interfaz es <b>ceremonia</b> — un archivo extra sin beneficio inmediato. Spring moderno inyecta y transacciona igual sobre clases concretas.</li>
+        <li><b>En este curso sí la usamos</b> a propósito: el objetivo es que interiorices <b>programar contra abstracciones</b>. En la industria verás las dos formas y sabrás cuándo conviene cada una.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
 <!-- ================= VALIDACIÓN · IMPLEMENTACIÓN ================= -->
 <section class="slide" id="val-impl" data-titulo="Implementación">
   <div class="slide-inner">
@@ -633,9 +724,109 @@ public class UsuarioValidadorImpl implements IUsuarioValidador {
       </div>
     </div>
 
+    <div class="callout mt reveal d4">
+      <h3><i data-lucide="box"></i> ¿Qué es un “bean” exactamente?</h3>
+      <p>Un <b>bean</b> es, sencillamente, <b>un objeto que Spring crea y administra por ti</b>. Al arrancar, Spring escanea las clases con anotaciones (<code>@Component</code>, <code>@Service</code>, <code>@Repository</code>, <code>@Configuration</code>…), crea <b>una sola instancia</b> de cada una (por defecto son <i>singletons</i>) y las guarda en un contenedor llamado <b>ApplicationContext</b>.</p>
+      <ul>
+        <li><b>Tú no haces <code>new</code>:</b> lo hace Spring. Cuando otra clase necesita ese objeto, Spring se lo <b>inyecta</b> (por el constructor).</li>
+        <li><b>Los conecta entre sí:</b> el servicio pide un <code>IUsuarioValidador</code> y Spring le entrega el bean <code>UsuarioValidadorImpl</code> que encaja en ese contrato.</li>
+        <li><b>Les da superpoderes:</b> al estar gestionados, los beans pueden envolverse con <code>@Transactional</code>, seguridad, caché, etc. — cosas imposibles con un objeto creado a mano.</li>
+      </ul>
+    </div>
+
     <div class="callout warn mt reveal d4">
       <h3><i data-lucide="info"></i> Ojo con el orden</h3>
       <p><code>validar(Usuario)</code> corre las reglas <b>en orden</b> y se detiene en la primera que falle. Por eso el mensaje que ves es el de la <b>primera</b> regla incumplida.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= VALIDACIÓN · EXPRESIONES REGULARES ================= -->
+<section class="slide" id="val-regex" data-titulo="Regex">
+  <div class="slide-inner">
+    <a href="#val-impl" class="volver reveal"><i data-lucide="corner-up-left"></i> UsuarioValidadorImpl</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="regex"></i></span>
+      <div><span class="kicker">La herramienta del formato</span><h2>Expresiones <span class="grad">regulares</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      La regla de <b>formato</b> del correo usa una <b>expresión regular</b> (regex): un patrón que describe
+      qué texto es válido y cuál no. Es la herramienta estrella de las validaciones de formato. Desmenucemos la
+      del correo y veamos las más comunes.
+    </p>
+
+    <h3 class="reveal d2 mb">El patrón del correo, pieza por pieza</h3>
+    <div class="code reveal d2 mb">
+      <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">^[\w.+-]+@[\w-]+\.[\w.-]+$</span></div>
+<pre><code class="language-java">^          // ancla: el texto empieza aquí (nada antes)
+[\w.+-]+   // usuario: 1+ de letra/digito/_, punto, + o -   ->  "ana.perez"
+@          // la arroba, literal y obligatoria
+[\w-]+     // dominio: 1+ de letra/digito/_ o guion          ->  "revuelta"
+\.         // un punto LITERAL (por eso va escapado con \)
+[\w.-]+    // extension: "edu", "com", "com.co"...
+$          // ancla: el texto termina aqui (nada despues)</code></pre>
+    </div>
+
+    <div class="callout warn reveal d2 mb">
+      <h3><i data-lucide="triangle-alert"></i> En Java se duplican las barras</h3>
+      <p>El patrón “puro” es <code>\w</code>, pero dentro de un <code>String</code> de Java se escribe <code>\\w</code>. Por eso en el código viste <code>Pattern.compile("^[\\w.+-]+@[\\w-]+\\.[\\w.-]+$")</code>. Compílalo <b>una sola vez</b> como <code>static final Pattern</code> y usa <code>.matcher(x).matches()</code>, que exige que <b>todo</b> el texto cuadre con el patrón.</p>
+    </div>
+
+    <h3 class="reveal d3 mb mt">Las regex más comunes (y dónde aplican en ReVuelta)</h3>
+    <div class="vidrio reveal d3" style="overflow:auto;">
+      <table class="tabla">
+        <thead><tr><th>Validación</th><th>Patrón (regex)</th><th>Dónde aplica</th></tr></thead>
+        <tbody>
+          <tr><td>Correo electrónico</td><td><code>^[\w.+-]+@[\w-]+\.[\w.-]+$</code></td><td><code>correo</code> de <b>Usuario</b></td></tr>
+          <tr><td>Solo letras y espacios</td><td><code>^[\p{L} ]+$</code></td><td><code>nombre</code>, <code>ciudad</code></td></tr>
+          <tr><td>Slug (url amigable)</td><td><code>^[a-z0-9]+(-[a-z0-9]+)*$</code></td><td><code>slug</code> de <b>Campaña</b></td></tr>
+          <tr><td>Teléfono (7–10 dígitos)</td><td><code>^\d{7,10}$</code></td><td><code>telefono</code></td></tr>
+          <tr><td>Placa (AAA123)</td><td><code>^[A-Z]{3}\d{3}$</code></td><td><code>placa</code> de <b>Vehículo</b></td></tr>
+          <tr><td>URL http/https</td><td><code>^https?://.+$</code></td><td><code>url</code> de una imagen</td></tr>
+          <tr><td>Solo dígitos</td><td><code>^\d+$</code></td><td>códigos numéricos</td></tr>
+          <tr><td>Precio / decimal</td><td><code>^\d+(\.\d{1,2})?$</code></td><td><code>precio</code>, <code>total</code></td></tr>
+          <tr><td>Fecha ISO (yyyy-mm-dd)</td><td><code>^\d{4}-\d{2}-\d{2}$</code></td><td>fecha recibida como texto</td></tr>
+          <tr><td>Contraseña fuerte (≥8, letra+dígito)</td><td><code>^(?=.*[A-Za-z])(?=.*\d).{8,}$</code></td><td>contraseña <b>antes</b> de cifrar</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="reveal d4 mb mt">Chuleta: los símbolos que más se repiten</h3>
+    <div class="grid g2 reveal d4">
+      <div class="vidrio card">
+        <p style="margin-bottom:12px;">
+          <span class="pill">\d</span> un dígito 0-9
+          <span class="pill">\w</span> letra/dígito/_
+          <span class="pill">.</span> cualquier carácter
+          <span class="pill">\.</span> un punto literal
+          <span class="pill">\p{L}</span> cualquier letra (con tildes/ñ)
+        </p>
+        <p>
+          <span class="pill azul">+</span> 1 o más
+          <span class="pill azul">*</span> 0 o más
+          <span class="pill azul">?</span> 0 o 1 (opcional)
+          <span class="pill azul">{n,m}</span> entre n y m veces
+        </p>
+      </div>
+      <div class="vidrio card">
+        <p style="margin-bottom:12px;">
+          <span class="pill cyan">^</span> empieza
+          <span class="pill cyan">$</span> termina
+          <span class="pill cyan">[abc]</span> uno de esos
+          <span class="pill cyan">[^abc]</span> ninguno de esos
+          <span class="pill cyan">[a-z]</span> un rango
+        </p>
+        <p>
+          <span class="pill warn">|</span> “o” (una u otra)
+          <span class="pill warn">( )</span> agrupa
+          <span class="pill warn">(?=…)</span> mira-adelante (exige sin consumir)
+        </p>
+      </div>
+    </div>
+
+    <div class="callout mt reveal d4">
+      <h3><i data-lucide="lightbulb"></i> Regla de oro con las regex</h3>
+      <p>Una regex de correo <b>nunca</b> es 100% perfecta (el estándar real es enorme). Para validar de entrada, un patrón <b>sencillo</b> basta; la prueba definitiva de que un correo existe es <b>enviarle un enlace de confirmación</b>. No te obsesiones con la regex “perfecta”: valida lo razonable y sigue.</p>
     </div>
   </div>
 </section>
@@ -998,6 +1189,84 @@ public record UsuarioResponseDTO(
         <h3><i data-lucide="circle-help"></i> ¿Y el mapper (MapStruct)?</h3>
         <p>Existe y en proyectos grandes ahorra código repetitivo (genera el mapeo en compilación). Pero aquí <b>no lo usamos</b>: primero hay que entender el mapeo <b>a mano</b>. El mapper es un atajo para después.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= DTO · TIPOS ================= -->
+<section class="slide" id="dto-tipos" data-titulo="Tipos de DTO">
+  <div class="slide-inner">
+    <a href="#dto-hu" class="volver reveal"><i data-lucide="corner-up-left"></i> USR-D01</a>
+    <div class="seccion-titulo reveal">
+      <span class="ico"><i data-lucide="boxes"></i></span>
+      <div><span class="kicker">No solo Request / Response</span><h2>Tipos de <span class="grad">DTO</span></h2></div>
+    </div>
+    <p class="sub reveal d1">
+      Un DTO <b>no está atado a una entidad</b>: es un objeto con la forma que le conviene al cliente. Hasta ahora usamos dos
+      (entrada y salida) sobre <b>un</b> modelo, pero hay más — incluido uno que <b>combina varios modelos</b>.
+    </p>
+
+    <div class="grid g3 reveal d2">
+      <div class="vidrio card">
+        <h3><i data-lucide="log-in"></i> Request DTO</h3>
+        <p>Lo que <b>entra</b>. Solo los campos que el cliente puede enviar. Ej.: <code>UsuarioRequestDTO</code> (sin id, sin fechas).</p>
+      </div>
+      <div class="vidrio card">
+        <h3><i data-lucide="log-out"></i> Response DTO</h3>
+        <p>Lo que <b>sale</b>. Oculta lo sensible. Ej.: <code>UsuarioResponseDTO</code> (sin <code>contrasena_hash</code>).</p>
+      </div>
+      <div class="vidrio card">
+        <h3><i data-lucide="combine"></i> DTO agregado</h3>
+        <p><b>Combina varios modelos</b> en una sola respuesta pensada para una pantalla concreta.</p>
+      </div>
+    </div>
+
+    <div class="callout reco mt reveal d3">
+      <h3><i data-lucide="circle-check"></i> ¿Un DTO puede tener datos de varios modelos? Sí, y es buena práctica</h3>
+      <p>La API no tiene por qué calcar las tablas. Si una pantalla necesita el <b>pedido</b> + <b>quién lo compró</b> + <b>qué prendas lleva</b>, se arma <b>un</b> DTO con todo eso. Se le llama <b>DTO agregado</b> (o <i>view model</i> de lectura).</p>
+    </div>
+
+    <div class="grid g2 mt">
+      <div class="code reveal d3">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">PedidoDetalleResponseDTO · junta 3 modelos</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">// Combina Pedido + Usuario (comprador) + Prenda.
+public record PedidoDetalleResponseDTO(
+    UUID pedidoId,
+    String estado,
+    Double total,
+    String compradorNombre,        // viene de Usuario
+    List&lt;String&gt; titulosPrendas    // vienen de varias Prenda
+) { }</code></pre>
+      </div>
+
+      <div class="code reveal d4">
+        <div class="code-bar"><span class="dots"><i></i><i></i><i></i></span><span class="lang">El SERVICIO lo ensambla</span>
+          <button class="copy"><i data-lucide="copy"></i><span>Copiar</span></button></div>
+<pre><code class="language-java">// El servicio pide los datos y arma el DTO combinado.
+public PedidoDetalleResponseDTO verDetalle(UUID pedidoId) {
+    Pedido pedido = pedidoRepo.findById(pedidoId)
+        .orElseThrow(() -&gt; new ResponseStatusException(
+            HttpStatus.NOT_FOUND, "El pedido no existe"));
+
+    Usuario comprador = pedido.getComprador();       // relación
+    List&lt;String&gt; titulos = pedido.getPrendas().stream()
+        .map(Prenda::getTitulo).toList();            // de varias Prenda
+
+    return new PedidoDetalleResponseDTO(
+        pedido.getId(), pedido.getEstado(), pedido.getTotal(),
+        comprador.getNombre(), titulos);
+}</code></pre>
+      </div>
+    </div>
+
+    <div class="callout warn mt reveal d4">
+      <h3><i data-lucide="triangle-alert"></i> Cuándo sí y cuándo con cuidado</h3>
+      <ul>
+        <li><b>Ideal para LEER:</b> pantallas de detalle, reportes y resúmenes que cruzan tablas.</li>
+        <li><b>Para ESCRIBIR</b> es mejor un DTO enfocado por entidad: mezclar muchos modelos en un solo DTO de escritura complica la validación y el guardado.</li>
+        <li>El DTO sirve a la <b>vista</b>, no a la base de datos: su forma la decide lo que el cliente necesita.</li>
+      </ul>
     </div>
   </div>
 </section>
